@@ -1,10 +1,6 @@
 module AdventOfCode.Y2020.Day5 where
 
 import Data.List
-import Control.Monad
-
-printLines :: Show a => [a] -> IO ()
-printLines = mapM_ print
 
 data RowDirection = F | B
    deriving (Eq, Show, Read)

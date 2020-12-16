@@ -1,15 +1,9 @@
 module AdventOfCode.Y2020.Day4 where
 
+import AdventOfCode.Y2020.Common
+
 import Data.List
-import Control.Monad
 import Data.Maybe
-import GHC.IO
-
-printLines :: Show a => [a] -> IO ()
-printLines = mapM_ print
-
-debug :: Bool -> IO () -> ()
-debug condition statement = unsafePerformIO $ if condition then statement else return ()
 
 data Passport = Passport
    { byr :: Maybe String
@@ -47,12 +41,6 @@ parse lines = do
       "ecl" -> buildPassportFrom (p {ecl = Just v}) xs
       "pid" -> buildPassportFrom (p {pid = Just v}) xs
       "cid" -> buildPassportFrom (p {cid = Just v}) xs
-
-breakAll :: (a -> Bool) -> [a] -> [[a]]
-breakAll p [] = [[]]
-breakAll p (x:xs) = let
-   (a:b) = breakAll p xs
-   in if p x then []:(a:b) else (x:a):b
 
 tuplize :: [a] -> (a,a)
 tuplize [x,y] = (x,y)
