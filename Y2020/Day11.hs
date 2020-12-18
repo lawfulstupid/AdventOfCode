@@ -20,20 +20,9 @@ data Layout = Layout
    , grid :: [[Cell]] }
    deriving (Eq)
 
-sampleInput :: Input
-sampleInput =
-   [ "L.LL.LL.LL"
-   , "LLLLLLL.LL"
-   , "L.L.L..L.."
-   , "LLLL.LL.LL"
-   , "L.LL.LL.LL"
-   , "L.LLLLL.LL"
-   , "..L.L....."
-   , "LLLLLLLLLL"
-   , "L.LLLLLL.L"
-   , "L.LLLLL.LL" ]
-   
-sampleLayout = parse sampleInput
+instance Show Layout where
+   show (Layout _ grid) = intercalate "\n" $ map (mconcat . map show) grid
+
 
 parse :: Input -> Layout
 parse input = let
@@ -44,9 +33,6 @@ parse input = let
    height = length grid
    width = if height == 0 then 0 else length (head grid)
    in Layout (width,height) grid
-
-instance Show Layout where
-   show (Layout _ grid) = intercalate "\n" $ map (mconcat . map show) grid
 
 
 get :: Coords -> Layout -> Maybe Cell
@@ -127,6 +113,20 @@ advance2 layout = layout {grid = newGrid (dimensions layout) getCell} where
 
 part2 :: Input -> Int
 part2 = occupiedSeats . stabilize advance2 . parse
+
+
+sample :: Input
+sample =
+   [ "L.LL.LL.LL"
+   , "LLLLLLL.LL"
+   , "L.L.L..L.."
+   , "LLLL.LL.LL"
+   , "L.LL.LL.LL"
+   , "L.LLLLL.LL"
+   , "..L.L....."
+   , "LLLLLLLLLL"
+   , "L.LLLLLL.L"
+   , "L.LLLLL.LL" ]
 
 myInput :: Input
 myInput = 

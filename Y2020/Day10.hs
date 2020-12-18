@@ -19,13 +19,6 @@ type Counter a = Map a Int
 deviceAdapter :: Bag -> Adapter
 deviceAdapter bag = maximum bag + 3
 
-
-sampleBag :: Bag
-sampleBag = [16, 10, 15, 5, 1, 11, 7, 19, 6, 12, 4]
-
-sampleBag2 :: Bag
-sampleBag2 = [28, 33, 18, 42, 31, 14, 46, 20, 48, 47, 24, 23, 49, 45, 19, 38, 39, 11, 1, 32, 25, 35, 8, 17, 7, 9, 4, 2, 34, 10, 3]
-
 getCount :: Ord a => a -> Counter a -> Int
 getCount x m = fromMaybe 0 $ Map.lookup x m
 
@@ -53,14 +46,6 @@ accepts input adapter = adapter - 3 <= input && input < adapter
 
 nextAdapter :: Joltage -> Bag -> [Adapter]
 nextAdapter input bag = filter (accepts input) bag
-
-printLines :: Show a => [a] -> IO ()
-printLines = mapM_ print
-
-
-debug :: Bool -> IO () -> ()
-debug condition statement = unsafePerformIO $ if condition then statement else return ()
-
 
 arrangementsBounded :: Joltage -> AdapterList -> Joltage -> Int
 arrangementsBounded input [] target = if target - 3 <= input then 1 else 0
@@ -95,8 +80,17 @@ part2 bag = let
    splits = splitAtDiff3 adapters
    in product $ map solveSplit splits
 
+
+-- This module was compiled to squeeze performance
 main :: IO ()
 main = print (part2 myInput)
+
+
+sample :: Bag
+sample = [16, 10, 15, 5, 1, 11, 7, 19, 6, 12, 4]
+
+sample2 :: Bag
+sample2 = [28, 33, 18, 42, 31, 14, 46, 20, 48, 47, 24, 23, 49, 45, 19, 38, 39, 11, 1, 32, 25, 35, 8, 17, 7, 9, 4, 2, 34, 10, 3]
 
 myInput :: Bag
 myInput = [153, 69, 163, 123, 89, 4, 135, 9, 124, 74, 141, 132, 75, 3, 18, 134, 84, 15, 61, 91,
