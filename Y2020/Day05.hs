@@ -1,5 +1,6 @@
 module AdventOfCode.Y2020.Day5 where
 
+import AdventOfCode.Y2020.Common
 import Data.List
 
 data RowDirection = F | B
@@ -20,9 +21,6 @@ getRow = binToDec . reverse . map (B==)
 
 getCol :: [ColDirection] -> Int
 getCol = binToDec . reverse . map (R==)
-
-binToDec :: [Bool] -> Int
-binToDec = foldr (\x y -> fromEnum x + 2 * y) 0
 
 getSeatId :: (Int,Int) -> Int
 getSeatId (r,c) = 8 * r + c
