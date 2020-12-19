@@ -13,6 +13,9 @@ debug condition statement = unsafePerformIO $ if condition then statement else r
 printLines :: Show a => [a] -> IO ()
 printLines = mapM_ print
 
+count :: (a -> Bool) -> [a] -> Int
+count f = length . filter f
+
 breakAll :: (a -> Bool) -> [a] -> [[a]]
 breakAll p [] = [[]]
 breakAll p (x:xs) = let
