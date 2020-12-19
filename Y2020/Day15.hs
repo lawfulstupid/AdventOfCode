@@ -12,18 +12,19 @@ import Control.DeepSeq
 type Term = Int
 type Sequence = [Term]
 
+-- Record: 85.48s
 getTerm :: Int -> Sequence -> Term
 getTerm n seed | n < length seed = seed !! n
 getTerm n seed = let
-   !lastIndexMap = M.fromList $ zip (init seed) [0..]
-   in aux (length seed - 1) (last seed) lastIndexMap
+   !lastIndexMap = M.fromList $ zip (init seed) $ iterate pred n
+   in aux (n + 1 - length seed) (last seed) lastIndexMap
    where
    aux :: Int -> Term -> IntMap Int -> Term
-   aux idx term _ | idx == n = term
+   aux 0 term _ = term
    aux idx term lastIndexMap = let
-      !nextTerm = idx - M.findWithDefault idx term lastIndexMap
+      !nextTerm = M.findWithDefault idx term lastIndexMap - idx
       !lastIndexMap' = M.insert term idx lastIndexMap
-      in aux (idx+1) nextTerm lastIndexMap'
+      in aux (idx-1) nextTerm lastIndexMap'
 
 part1 = getTerm (2020-1)
 part2 = getTerm (30000000-1)
