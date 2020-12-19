@@ -14,18 +14,19 @@ type Sequence = [Term]
 
 -- Record: 85.48s
 getTerm :: Int -> Sequence -> Term
-getTerm n seed | n <= 0 = errorWithoutStackTrace "index out of bounds"
-getTerm n seed | n <= length seed = seed !! (n-1)
-getTerm n seed = let
-   !lastIndexMap = M.fromList $ zip (init seed) $ iterate pred (n-1)
-   in aux (n - length seed) (last seed) lastIndexMap
-   where
-   aux :: Int -> Term -> IntMap Int -> Term
-   aux 0 term _ = term
-   aux idx term lastIndexMap = let
-      !nextTerm = M.findWithDefault idx term lastIndexMap - idx
-      !lastIndexMap' = M.insert term idx lastIndexMap
-      in aux (idx-1) nextTerm lastIndexMap'
+getTerm n seed
+   | n <= 0 = errorWithoutStackTrace "index out of bounds"
+   | n <= length seed = seed !! (n-1)
+   | otherwise = let
+      !lastIndexMap = M.fromList $ zip (init seed) $ iterate pred (n-1)
+      in aux (n - length seed) (last seed) lastIndexMap
+      where
+      aux :: Int -> Term -> IntMap Int -> Term
+      aux 0 term _ = term
+      aux idx term lastIndexMap = let
+         !nextTerm = M.findWithDefault idx term lastIndexMap - idx
+         !lastIndexMap' = M.insert term idx lastIndexMap
+         in aux (idx-1) nextTerm lastIndexMap'
 
 part1 = getTerm 2020
 part2 = getTerm 30000000
