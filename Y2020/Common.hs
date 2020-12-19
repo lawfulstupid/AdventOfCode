@@ -79,6 +79,6 @@ reader :: Read a => Parser a
 reader = Parser reads
 
 parseUsing :: Parser a -> String -> a
-parseUsing p s = case apply p s of
-   [(x,"")] -> x
+parseUsing p s = case filter (null . snd) $ apply p s of
+   [(x,_)] -> x
    _ -> error "Failed to parse"
