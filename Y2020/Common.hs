@@ -22,6 +22,10 @@ breakAll p (x:xs) = let
    (a:b) = breakAll p xs
    in if p x then []:(a:b) else (x:a):b
 
+splitAll :: Int -> [a] -> [[a]]
+splitAll n [] = []
+splitAll n xs = let (a,b) = splitAt n xs in a : splitAll n b
+
 binToDec :: Num a => [Bool] -> a
 binToDec = foldr (\x y -> (if x then 1 else 0) + 2 * y) 0
 
