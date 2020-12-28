@@ -1,5 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE PartialTypeSignatures #-}
 
 module AdventOfCode.Y2020.Day20 where
 
@@ -12,66 +13,59 @@ import Control.Applicative
 import Data.List
 import Data.Maybe
 import Data.IntMap.Strict (IntMap)
-import qualified Data.IntMap.Strict as M
+import qualified Data.IntMap.Strict as IM
+import Data.Map.Strict (Map)
+import qualified Data.Map.Strict as M
 import Data.Set (Set)
 import qualified Data.Set as S
 
-
-type Id = Int
-type ImageLine = [Char]
-type Image = [ImageLine]
-data Tile = Tile {tile :: Image, edges :: [Edge]}
-   deriving (Show)
+-- Enums
 data EdgePos = Top | Bottom | Left | Right deriving (Show)
-data Edge = Edge EdgePos ImageLine deriving (Show)
 data EdgeDirection = Normal | Reversed deriving (Show,Eq)
-type EdgeSet = Set ImageLine
-type EdgesByTileId = IntMap [Edge]
-type Input = [String]
-type TilesById = IntMap Tile
-type TileTransform = (Int, Transform)
-data Configuration = Config Int [[TileTransform]]
-
 data Transform = Id | Rot90 | Rot180 | Rot270 | FlipX | FlipY | Diag1 | Diag2 deriving (Show,Eq,Enum,Bounded)
+
+-- Tile and Image
+type Pixel = Char
+type ImageLine = [Pixel]
+type Image = [ImageLine]
+data Tile = Tile {tileId :: Id, tile :: Image, edges :: [Edge]} deriving (Show)
+data Edge = Edge EdgePos ImageLine deriving (Show)
+
+-- Working
+type Id = Int
+type Input = [String]
+type EdgesByTileId = IntMap [Edge]
+type TilesById = IntMap Tile
+type TileTransform = (Id, Transform)
+type Configuration = [[TileTransform]]
+type Coords = (Int, Int)
+type ImageMap = Map Coords Pixel
+
+doDebug = True
 
 transform :: Transform -> ([[a]] -> [[a]])
 transform t = case t of
    Id -> id
-   Rot90 -> transform FlipY . transform Diag2
+   Rot90 -> transform FlipY . transform Diag1
    Rot180 -> transform FlipX . transform FlipY
-   Rot270 -> transform FlipX . transform Diag2
+   Rot270 -> transform FlipX . transform Diag1
    FlipX -> reverse
    FlipY -> map reverse
-   Diag1 -> transform Rot180 . transform Diag2
-   Diag2 -> transpose
+   Diag1 -> transpose
+   Diag2 -> transform Rot180 . transform Diag1
 
-get :: Id -> IntMap a -> a
-get = M.findWithDefault undefined
+-- Map functions ---------------------------------------------------------------
 
-valid :: TilesById -> Configuration -> Bool
-valid m (Config _ img) = all validRow img && all validCol (transpose img)
-   where
-   validRow :: [TileTransform] -> Bool
-   validRow [] = True
-   validRow [_] = True
-   validRow ((x,f):(y,g):xs) = let
-      xt = transform f $ tile $ get x m
-      yt = transform g $ tile $ get y m
-      a = last $ transpose xt -- last column
-      b = head $ transpose yt -- first column
-      in a == b && validRow ((y,g):xs)
+(!) :: IntMap a -> Int -> a
+(!) m n = IM.findWithDefault (errorWithoutStackTrace "not found") n m
 
-   validCol :: [TileTransform] -> Bool
-   validCol [] = True
-   validCol [_] = True
-   validCol ((x,f):(y,g):xs) = let
-      xt = transform f $ tile $ get x m
-      yt = transform g $ tile $ get y m
-      a = last xt -- last row
-      b = head yt -- first row
-      in a == b && validCol ((y,g):xs)
+deleteAllKeys :: [Int] -> IntMap a -> IntMap a
+deleteAllKeys [] m = m
+deleteAllKeys (x:xs) m = deleteAllKeys xs $ IM.delete x m
 
-edgeMatch :: EdgeSet -> Edge -> Maybe EdgeDirection
+--------------------------------------------------------------------------------
+
+edgeMatch :: Set ImageLine -> Edge -> Maybe EdgeDirection
 edgeMatch s (Edge _ e) = let
    normalMatch = S.member e s
    reverseMatch = S.member (reverse e) s
@@ -88,34 +82,194 @@ isCorner m id = let
    
 getCornerIds :: TilesById -> [Id]
 getCornerIds m = let
-   !em = M.map edges m
-   in filter (isCorner em) $ M.keys m
+   !em = IM.map edges m
+   in filter (isCorner em) $ IM.keys m
 
 getMatchingEdges :: EdgesByTileId -> Id -> [(Edge, EdgeDirection)]
 getMatchingEdges m id = let
-   !edges = get id m
-   !set = S.fromList $ map (\(Edge _ e) -> e) $ concat $ M.elems $ M.delete id m
+   !edges = m ! id
+   !set = S.fromList $ map (\(Edge _ e) -> e) $ concat $ IM.elems $ IM.delete id m
    in edges >>= \edge -> map (edge,) $ maybeToList $ edgeMatch set edge
 
 part1 :: TilesById -> Int
 part1 = product . getCornerIds
 
 
-deleteAllKeys :: [Int] -> IntMap a -> IntMap a
-deleteAllKeys [] m = m
-deleteAllKeys (x:xs) m = deleteAllKeys xs $ M.delete x m
+getEdge :: EdgePos -> Image -> ImageLine
+getEdge p = case p of
+   Top -> head
+   Bottom -> last
+   Left -> head . transpose
+   Right -> last . transpose
 
--- getConfiguration :: TilesById -> Configuration
--- getConfiguration m = let
-   -- cornerIds = getCornerIds m
-   -- in undefined
+
+getAdjacentTile :: ImageLine -> TilesById -> (Id, Edge, EdgeDirection)
+getAdjacentTile e m = let
+   set = S.singleton e
+   tiles = IM.elems m
+   options = do
+      tile <- tiles
+      edge <- edges tile
+      case edgeMatch set edge of
+         Nothing -> []
+         Just dr -> [(tileId tile, edge, dr)]
+   in head options
+
+getImage :: TilesById -> Image
+getImage m = let
+   !cfg = getConfiguration m
+   cfgToImage (tileId, tileTransform) = transform tileTransform $ tile (m ! tileId)
+   removeBorder img = (tail . init) $ map (tail . init) img
+   imageArray = map (map (removeBorder . cfgToImage)) cfg
+   in concat $ map concatImages $ imageArray
+
+concatImages :: Foldable t => t Image -> Image
+concatImages = foldr1 $ zipWith (++)
+
+
+getConfiguration :: TilesById -> Configuration
+getConfiguration masterMap = let
+   !em = IM.map edges masterMap
+   cornerId = head $ getCornerIds masterMap
+   cornerTransform = orientFirstCorner $ map fst $ getMatchingEdges em cornerId
+   m1 = IM.delete cornerId masterMap
+   (firstColumn, m2) = getColumn [(cornerId, cornerTransform)] m1
+   config = getRows (map return firstColumn) m2
+   in config
+   
+   where
+   
+   sideLength = floor $ sqrt $ fromIntegral $ IM.size masterMap
+   
+   getColumn :: [TileTransform] -> TilesById -> ([TileTransform], TilesById)
+   getColumn config m | length config == sideLength = (config, m)
+   getColumn config m = let
+      (lastTileId, lastTransform) = last config
+      lastTile = transform lastTransform $ tile (masterMap ! lastTileId)
+      bottomEdge = last lastTile
+      (tileId, Edge p _, d) = getAdjacentTile bottomEdge m
+      tileTransform = orientTop (p,d)
+      config' = config ++ [(tileId, tileTransform)]
+      m' = IM.delete tileId m
+      in getColumn config' m'
+   
+   getRow :: [TileTransform] -> TilesById -> ([TileTransform], TilesById)
+   getRow config m | length config == sideLength = (config, m)
+   getRow config m = let
+      (lastTileId, lastTransform) = last config
+      lastTile = transform lastTransform $ tile (masterMap ! lastTileId)
+      rightEdge = last $ transpose lastTile
+      (tileId, Edge p _, d) = getAdjacentTile rightEdge m
+      tileTransform = orientLeft (p,d)
+      config' = config ++ [(tileId, tileTransform)]
+      m' = IM.delete tileId m
+      in getRow config' m'
+   
+   getRows :: [[TileTransform]] -> TilesById -> [[TileTransform]]
+   getRows [] _ = []
+   getRows (r:rs) m = let
+      (row, m') = getRow r m
+      in row : getRows rs m'
+   
+   orientFirstCorner :: [Edge] -> Transform
+   orientFirstCorner [Edge p1 _, Edge p2 _] = case (p1,p2) of
+      (Top, Right) -> FlipX
+      (Top, Left) -> Diag2
+      (Right, Top) -> FlipX
+      (Right,Bottom) -> Id
+      (Bottom, Right) -> Id
+      (Bottom, Left) -> FlipY
+      (Left, Top) -> Diag2
+      (Left, Bottom) -> FlipY
+   
+   orientTop :: (EdgePos,EdgeDirection) -> Transform
+   orientTop = \case
+      (Top,Normal) -> Id
+      (Top,Reversed) -> FlipY
+      (Right,Normal) -> Rot270
+      (Right,Reversed) -> Diag2
+      (Bottom,Normal) -> FlipX
+      (Bottom,Reversed) -> Rot180
+      (Left,Normal) -> Diag1
+      (Left,Reversed) -> Rot90
+   
+   orientLeft :: (EdgePos,EdgeDirection) -> Transform
+   orientLeft = \case
+      (Top,Normal) -> Diag1
+      (Top,Reversed) -> Rot270
+      (Right,Normal) -> FlipY
+      (Right,Reversed) -> Rot180
+      (Bottom,Normal) -> Rot90
+      (Bottom,Reversed) -> Diag2
+      (Left,Normal) -> Id
+      (Left,Reversed) -> FlipX
+
+imageToMap :: Image -> ImageMap
+imageToMap img = let
+   f y = zipWith (\x p -> ((x,y),p)) [0..]
+   in M.fromList $ concat $ zipWith f [0..] img
+
+mapToImage :: ImageMap -> Image
+mapToImage m = let
+   coords = M.keys m
+   width = maximum $ map fst coords
+   height = maximum $ map snd coords
+   in [ [ M.findWithDefault ' ' (x,y) m | x <- [0..width]] | y <- [0..height]]
+
+markAllMonsters :: ImageMap -> ImageMap
+markAllMonsters m = let
+   coords = M.keys m
+   width = maximum $ map fst coords
+   height = maximum $ map snd coords
+   maxX = width - seaMonsterWidth
+   maxY = height - seaMonsterHeight
+   checkLocations = [(x,y) | x <- [0..maxX], y <- [0..maxY]]
+   in aux checkLocations m
+   where
+   aux :: [Coords] -> ImageMap -> ImageMap
+   aux [] m = m
+   aux (p:ps) m = aux ps $ fromMaybe m $ markMonsterAt p m
+   
+
+markMonsterAt :: Coords -> ImageMap -> Maybe ImageMap
+markMonsterAt pos m = foldM (flip $ M.alterF markScale) m $ monsterCoords pos
+   where
+   markScale :: Maybe Pixel -> Maybe (Maybe Pixel)
+   markScale (Just '#') = Just (Just 'O')
+   markScale _ = Nothing
+
+seaMonster :: Image
+seaMonster = 
+   [ "                  # "
+   , "#    ##    ##    ###"
+   , " #  #  #  #  #  #   " ]
+seaMonsterWidth = 20
+seaMonsterHeight = 3
+
+monsterCoords :: Coords -> [Coords]
+monsterCoords (x,y) =
+   [(x,y+1), (x+1,y+2)
+   , (x+4,y+2), (x+5,y+1), (x+6,y+1), (x+7,y+2)
+   , (x+10,y+2), (x+11,y+1), (x+12,y+1), (x+13,y+2)
+   , (x+16,y+2), (x+17,y+1), (x+18,y), (x+18,y+1), (x+19,y+1) ]
+
+
+getVariants :: Image -> [Image]
+getVariants img = map transform [Id ..] <*> [img]
+
+-- after sea monster has been marked
+getWaterRoughness :: ImageMap -> Int
+getWaterRoughness m = count (=='#') $ M.elems m
+
+part2 :: TilesById -> Int
+part2 = minimum . map (getWaterRoughness . markAllMonsters . imageToMap) . getVariants . getImage   
 
 
 parseInput :: Input -> TilesById
-parseInput = M.fromList . map parseTile . breakAll null
+parseInput = IM.fromList . map parseTile . breakAll null
    where
    parseTile :: Input -> (Int, Tile)
-   parseTile (header:image) = (parseUsing parseId header, Tile image (getEdges image))
+   parseTile (header:image) = let tileId = parseUsing parseId header in (tileId, Tile tileId image (getEdges image))
    
    parseId :: Parser Id
    parseId = do
@@ -134,13 +288,20 @@ parseInput = M.fromList . map parseTile . breakAll null
       edges = [top, bottom, left, right]
       in edges -- ++ map reverse edges
 
-test :: Tile
-test = Tile ["       "," ##### "," #     "," ###   "," #     "," #     ","       "] []
 
-test2 = valid sample $ Config 3 $
-   [ [(1951, FlipX), (2311, FlipX), (3079, Id)]
-   , [(2729, FlipX), (1427, FlipX), (2473, Diag1)]
-   , [(2971, FlipX), (1489, FlipX), (1171, FlipY)] ]
+printImg :: Image -> IO ()
+printImg = mapM_ putStrLn
+
+testImg :: Image
+testImg = 
+   [ "       "
+   , " ##### "
+   , " #     "
+   , " ###   "
+   , " #     "
+   , " #     "
+   , "       "
+   ]
 
 sample :: TilesById
 sample = parseInput
