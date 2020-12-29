@@ -4,6 +4,9 @@ import Control.Monad
 import Control.Applicative
 import Control.Monad.Fail
 import GHC.IO
+import Data.Map (Map)
+import qualified Data.Map as M
+import Data.Tuple (swap)
 
 
 
@@ -25,6 +28,25 @@ breakAll p (x:xs) = let
 splitAll :: Int -> [a] -> [[a]]
 splitAll n [] = []
 splitAll n xs = let (a,b) = splitAt n xs in a : splitAll n b
+
+grouping :: Ord k => [(k,a)] -> Map k [a]
+grouping = M.fromListWith (++) . map (fmap return)
+
+reverseMap :: (Ord a, Ord b) => Map a [b] -> Map b [a]
+reverseMap m = grouping $ map swap (M.assocs m >>= \(k,vs) -> map (k,) vs)
+
+solveToBijection :: (Ord a, Ord b) => Map a [b] -> Map a b
+solveToBijection = aux M.empty
+   where
+   aux :: (Ord a, Ord b) => Map a b -> Map a [b] -> Map a b
+   aux out m | M.size m == 0 = out
+   aux out m = let
+      (final, ambig) = M.partition (\xs -> length xs == 1) m
+      confirmedAssocs = M.assocs $ M.map head final
+      out' = M.union out $ M.fromList confirmedAssocs
+      confirmed = map snd confirmedAssocs
+      m' = M.map (filter (\x -> not (x `elem` confirmed))) ambig
+      in aux out' m'
 
 binToDec :: Num a => [Bool] -> a
 binToDec = foldr (\x y -> (if x then 1 else 0) + 2 * y) 0
