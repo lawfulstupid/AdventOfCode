@@ -13,41 +13,40 @@ import Data.Monoid
 
 type Card = Int
 type Deck = [Card]
-type Shuffle = Deck -> Deck
+type DeckSize = Int
+type Shuffle = DeckSize -> (Int -> Int)
+
+data Mapping = Mapping {apply :: Shuffle}
+
+instance Semigroup Mapping where
+   Mapping f <> Mapping g = Mapping $ \deckSize -> (f deckSize . g deckSize)
+
+instance Monoid Mapping where
+   mempty = Mapping $ const id
 
 deck :: Int -> Deck
 deck n = [0..n-1]
 
 dealNew :: Shuffle
-dealNew = reverse
+dealNew deckSize idx = deckSize - idx - 1
 
 cut :: Int -> Shuffle
-cut n = if n >= 0
-   then uncurry (flip (++)) . splitAt n
-   else reverse . cut (negate n) . reverse
+cut n deckSize idx = (idx + n) `mod` deckSize
 
+-- assumes n and deckSize are coprime
 deal :: Int -> Shuffle
-deal n s = let
-   size = length s
-   idxs = map (`mod` size) $ iterate (+n) 0
-   table = aux idxs s M.empty
-   in foldMap snd $ sortOn fst $ M.assocs table
-   where
-   aux :: [Int] -> Deck -> IntMap Deck -> IntMap Deck
-   aux _ [] m = m
-   aux (idx:idxs) (c:s) m = let
-      update = Just . (c:) . fromMaybe []
-      m' = M.alter update idx m
-      in aux idxs s m'
+deal n deckSize idx = let
+   !x = fromJust $ find (\j -> j `mod` n == 0) $ iterate (+deckSize) idx
+   in x `div` n
 
-shuffle :: [Shuffle] -> Shuffle
-shuffle [] d = d
-shuffle (f:fs) d = let
-   !d' = f d
-   in shuffle fs d'
+flatten :: [Shuffle] -> Shuffle
+flatten = apply . mconcat . map Mapping
 
 part1 :: Int
-part1 = fromJust $ findIndex (==2019) $ shuffle myInput $ deck 10007
+part1 = let
+   !f = flatten myInput
+   xs = map (f 10007) $ deck 10007
+   in fromJust $ findIndex (==2019) xs
 
 samples :: [[Shuffle]]
 samples =
