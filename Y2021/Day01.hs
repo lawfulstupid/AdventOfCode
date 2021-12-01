@@ -1,7 +1,13 @@
 module AdventOfCode.Y2021.Day1 where
 
-increases :: [Integer] -> Int
-increases input = length $ filter (==LT) $ zipWith compare input (tail input)
+part1 :: [Integer] -> Int
+part1 input = length $ filter (==LT) $ zipWith compare input (tail input)
+
+rolling3Sums :: [Integer] -> [Integer]
+rolling3Sums input = zipWith3 (\x y z -> x + y + z) input (tail input) (tail $ tail input)
+
+part2 :: [Integer] -> Int
+part2 = part1 . rolling3Sums
 
 sampleInput :: [Integer]
 sampleInput = [199,200,208,210,200,207,240,269,260,263]
