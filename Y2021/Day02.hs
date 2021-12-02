@@ -3,28 +3,42 @@ module AdventOfCode.Y2021.Day2 where
 data Position = Pos
    { hPos :: Int
    , depth :: Int
+   , aim :: Int
    } deriving (Eq, Show)
 
 start :: Position
-start = Pos 0 0
+start = Pos 0 0 0
 
 type Movement = Position -> Position
 
 forward :: Int -> Movement
-forward n (Pos h v) = Pos (n + h) v
+forward n (Pos h v a) = if legacy
+   then Pos (n + h) v a
+   else Pos (n + h) (v + n*a) a
 
 down :: Int -> Movement
-down n (Pos h v) = Pos h (v + n)
+down n (Pos h v a) = if legacy
+   then Pos n (v + n) a
+   else Pos h v (a + n)
 
 up :: Int -> Movement
-up n (Pos h v) = Pos h (v - n)
+up n (Pos h v a) = if legacy
+   then Pos h (v - n) a
+   else Pos h v (a - n)
 
 apply :: [Movement] -> Movement
 apply [] = id
 apply (m:ms) = apply ms . m
 
-part1 :: [Movement] -> Int
-part1 ms = let p = apply ms start in hPos p * depth p
+
+-- Part 1: set legacy = True
+-- Part 2: set legacy = False
+soln :: [Movement] -> Int
+soln ms = let p = apply ms start in hPos p * depth p
+
+legacy :: Bool
+legacy = False
+
 
 sampleInput :: [Movement]
 sampleInput = [forward 5,down 5,forward 8,up 3,down 8,forward 2]
