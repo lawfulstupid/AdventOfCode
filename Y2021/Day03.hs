@@ -12,10 +12,13 @@ sumNums = foldr1 $ zipWith (+)
 
 gamma :: [String] -> String
 gamma input = let
-   threshold = length input `div` 2
+   threshold = ceiling (fromIntegral (length input) / 2)
    counts = sumNums $ map byteToNums input
-   boolByte = map (> threshold) counts
+   boolByte = map (>= threshold) counts
    in map (\b -> if b then '1' else '0') boolByte
+
+epsilon :: [String] -> String
+epsilon = invertBin . gamma
 
 part1 :: [String] -> Int
 part1 input = let
@@ -23,6 +26,26 @@ part1 input = let
    g = readBin b
    e = readBin (invertBin b)
    in g * e
+
+
+filterSearch :: ([String] -> String) -> Int -> [String] -> String
+filterSearch f pos [byte] = byte
+filterSearch f pos bytes = let
+   pivot = (f bytes) !! pos
+   bytes' = filter (\byte -> byte !! pos == pivot) bytes
+   in filterSearch f (pos + 1) bytes'
+
+oxygenRating :: [String] -> Int
+oxygenRating = readBin . filterSearch gamma 0
+
+co2Rating :: [String] -> Int
+co2Rating = readBin . filterSearch epsilon 0
+
+part2 :: [String] -> Int
+part2 input = let
+   oxy = oxygenRating input
+   co2 = co2Rating input
+   in oxy * co2
 
 sampleInput :: [String]
 sampleInput = ["00100","11110","10110","10111","10101","01111","00111","11100","10000","11001","00010","01010"]
