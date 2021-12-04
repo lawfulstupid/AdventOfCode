@@ -1,7 +1,9 @@
 module AdventOfCode.Y2021.Day1 where
 
+import AdventOfCode.Common.List
+
 part1 :: [Integer] -> Int
-part1 input = length $ filter (==LT) $ zipWith compare input (tail input)
+part1 input = count (==LT) $ zipWith compare input (tail input)
 
 rolling3Sums :: [Integer] -> [Integer]
 rolling3Sums input = zipWith3 (\x y z -> x + y + z) input (tail input) (tail $ tail input)
