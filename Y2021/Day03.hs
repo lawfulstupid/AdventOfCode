@@ -1,24 +1,27 @@
 module AdventOfCode.Y2021.Day3 where
 
-import AdventOfCode.Common.Util (binToDec)
+import AdventOfCode.Common.Util (binToDec, readBin, invertBin)
 
 
 byteToNums :: String -> [Int]
 byteToNums [] = []
 byteToNums (b:bs) = read [b] : byteToNums bs
 
-gamma :: [String] -> [Bool]
+sumNums :: Num a => [[a]] -> [a]
+sumNums = foldr1 $ zipWith (+)
+
+gamma :: [String] -> String
 gamma input = let
    threshold = length input `div` 2
-   counts = foldr1 (zipWith (+)) $ map byteToNums input
+   counts = sumNums $ map byteToNums input
    boolByte = map (> threshold) counts
-   in reverse boolByte
+   in map (\b -> if b then '1' else '0') boolByte
 
 part1 :: [String] -> Int
 part1 input = let
    b = gamma input
-   g = binToDec b
-   e = binToDec (map not b)
+   g = readBin b
+   e = readBin (invertBin b)
    in g * e
 
 sampleInput :: [String]
