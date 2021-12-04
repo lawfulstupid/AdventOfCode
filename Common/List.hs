@@ -31,3 +31,11 @@ reverseMap m = grouping $ map swap (M.assocs m >>= \(k,vs) -> map (k,) vs)
 
 padL :: a -> Int -> [a] -> [a]
 padL x n xs = replicate (n - length xs) x ++ xs
+
+deleteAt :: Int -> [a] -> [a]
+deleteAt n xs = let
+   (h,_:t) = splitAt n xs
+   in h ++ t
+
+deleteAllAt :: [Int] -> [a] -> [a]
+deleteAllAt ns xs = concat $ zipWith (\n x -> if n `elem` ns then [] else [x]) [0..] xs

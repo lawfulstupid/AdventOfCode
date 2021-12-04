@@ -1,6 +1,7 @@
 module AdventOfCode.Y2021.Day4 where
 
 import AdventOfCode.Common.Grid
+import AdventOfCode.Common.List (deleteAllAt)
 import Control.Applicative ((<|>))
 import Data.Maybe
 
@@ -54,12 +55,29 @@ play (BingoGame ds boards) = aux 0 boards where
          [b] -> BingoResult (take (pos+1) ds) b
          _ -> errorWithoutStackTrace "multiple winners"
 
-part1 :: BingoGame -> Int
-part1 game = let
-   result = play game
+score :: BingoResult -> Int
+score result = let
    lastDraw = last $ drawnNumbers result
    unmarkedSum = sum $ mapRows sum $ fmap (\c -> if marked c then 0 else number c) $ winningBoard result
    in unmarkedSum * lastDraw
+
+part1 :: BingoGame -> Int
+part1 = score . play
+
+
+playToLose :: BingoGame -> BingoResult
+playToLose (BingoGame ds boards) = aux 0 boards where
+   aux :: Int -> [BingoBoard] -> BingoResult
+   aux pos bs | length bs == 1 = play $ BingoGame ds bs
+   aux pos bs = let
+      bs' = map (update (ds!!pos)) bs
+      winnerIds = map fst $ filter (winner . snd) $ zip [0..] bs'
+      in case winnerIds of
+         [] -> aux (pos+1) bs'
+         ws -> aux (pos+1) $ deleteAllAt ws bs'
+
+part2 :: BingoGame -> Int
+part2 = score . playToLose
 
 sampleInput :: BingoGame
 sampleInput = BingoGame [7,4,9,5,11,17,23,2,0,14,21,24,10,16,13,6,15,25,12,22,18,20,8,19,3,26,1]
