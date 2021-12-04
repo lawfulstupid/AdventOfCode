@@ -2,9 +2,13 @@ module AdventOfCode.Common.List where
 
 import Data.Map (Map)
 import qualified Data.Map as M
+import Data.Tuple (swap)
 
 printLines :: Show a => [a] -> IO ()
 printLines = mapM_ print
+
+(!?) :: [a] -> Int -> Maybe a
+(!?) xs n = if 0 <= n && n < length xs then Just (xs !! n) else Nothing
 
 count :: (a -> Bool) -> [a] -> Int
 count f = length . filter f
@@ -24,3 +28,6 @@ grouping = M.fromListWith (++) . map (fmap return)
 
 reverseMap :: (Ord a, Ord b) => Map a [b] -> Map b [a]
 reverseMap m = grouping $ map swap (M.assocs m >>= \(k,vs) -> map (k,) vs)
+
+padL :: a -> Int -> [a] -> [a]
+padL x n xs = replicate (n - length xs) x ++ xs
