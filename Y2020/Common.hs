@@ -2,12 +2,14 @@ module AdventOfCode.Y2020.Common (
    module AdventOfCode.Y2020.Common,
    module AdventOfCode.Common.Util,
    module AdventOfCode.Common.List,
-   module AdventOfCode.Common.Parser
+   module AdventOfCode.Common.Parser,
+   module AdventOfCode.Common.Binary
 ) where
 
 import AdventOfCode.Common.Util
 import AdventOfCode.Common.List
 import AdventOfCode.Common.Parser
+import AdventOfCode.Common.Binary
 
 import Data.Tuple (swap)
 import Data.Map (Map)

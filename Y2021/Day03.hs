@@ -1,6 +1,6 @@
 module AdventOfCode.Y2021.Day3 where
 
-import AdventOfCode.Common.Util (binToDec, readBin, invertBin)
+import AdventOfCode.Common.Binary
 
 
 byteToNums :: String -> [Int]
