@@ -10,6 +10,8 @@ import AdventOfCode.Common.List
 import AdventOfCode.Common.Parser
 
 import Data.Tuple (swap)
+import Data.Map (Map)
+import qualified Data.Map as M
 
 solveToBijection :: (Ord a, Ord b) => Map a [b] -> Map a b
 solveToBijection = aux M.empty
