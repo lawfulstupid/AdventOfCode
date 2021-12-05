@@ -31,7 +31,6 @@ point seg = horizontal seg && vertical seg
 --------------------------------------------------------------------------------
 
 expand :: LineSegment -> [Coords]
-expand seg | not (orthogonal seg) = errorWithoutStackTrace "non-orthogonal line segment"
 expand seg | point seg = [start seg]
 expand seg = let
    dirX = signum (x2 seg - x1 seg)
@@ -42,8 +41,14 @@ expand seg = let
 diagram :: [LineSegment] -> Grid Intersections
 diagram = fromCoordsList (Intersections 0) . map (fmap Intersections) . freq . foldMap expand . filter orthogonal
 
+dangerousAreas :: [LineSegment] -> Int
+dangerousAreas = count (>1) . map snd . freq . foldMap expand
+
 part1 :: [LineSegment] -> Int
-part1 segs = count (>1) $ map snd $ freq $ foldMap expand $ filter orthogonal segs
+part1 = dangerousAreas . filter orthogonal
+
+part2 :: [LineSegment] -> Int
+part2 = dangerousAreas
 
 --------------------------------------------------------------------------------
 
