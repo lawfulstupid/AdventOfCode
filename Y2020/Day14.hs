@@ -74,9 +74,6 @@ part1 input = let
    in sum $ map (toInteger . snd) $ M.assocs m
 
 
-padL :: a -> Int -> [a] -> [a]
-padL c n s = [c | _ <- [length s + 1 .. n]] ++ s
-
 applyMask2 :: Bitmask -> Word36 -> [Word36]
 applyMask2 mask x = let
    xstr = padL '0' 36 $ showBin x
