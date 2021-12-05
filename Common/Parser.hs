@@ -42,6 +42,12 @@ char = Parser $ \s -> if null s then [] else [(head s, tail s)]
 string :: Parser String
 string = pure "" <|> liftA2 (flip (:)) string char
 
+match :: String -> Parser String
+match lit = do
+   s <- string
+   guard (s == lit)
+   return s
+
 whitespace :: Parser String
 whitespace = some $ do
    c <- char

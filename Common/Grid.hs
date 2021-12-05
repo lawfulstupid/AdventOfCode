@@ -42,3 +42,13 @@ row n (Grid g) = g !? n
 
 col :: Int -> Grid a -> Maybe [a]
 col n = row n . transpose
+
+(!) :: Grid a -> (Int, Int) -> a
+(!) (Grid g) (x,y) = (g !! y) !! x
+
+fromCoordsList :: a -> [((Int, Int), a)] -> Grid a
+fromCoordsList def coords = let
+   maxX = maximum $ map (fst . fst) coords
+   maxY = maximum $ map (snd . fst) coords
+   getValue (x,y) = maybe def id $ lookup (x,y) coords
+   in Grid [ [ getValue (x,y) | x <- [0..maxX]] | y <- [0..maxY]]
