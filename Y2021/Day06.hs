@@ -22,17 +22,13 @@ descendantsMem = [[ aux t f | f <- [0..8]] | t <- [0..]] where
    aux t 0 = descendants (t-1) 6 + descendants (t-1) 8
    aux t f = descendants (t-1) (f-1)
 
-update :: Fish -> [Fish]
-update 0 = [6,8]
-update n = [n-1]
-
-updateAll :: [Fish] -> [Fish]
-updateAll fish = fish >>= update
-
 --------------------------------------------------------------------------------
 
 part1 :: [Fish] -> Int
 part1 = sum . map (descendants 80)
+
+part2 :: [Fish] -> Int
+part2 = sum . map (descendants 256)
 
 --------------------------------------------------------------------------------
 
