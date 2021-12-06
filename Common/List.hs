@@ -1,3 +1,5 @@
+{-# LANGUAGE TupleSections #-}
+
 module AdventOfCode.Common.List where
 
 import Data.Map (Map)
