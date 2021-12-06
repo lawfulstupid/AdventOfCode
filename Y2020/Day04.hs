@@ -48,9 +48,6 @@ tuplize [x,y] = (x,y)
 hasFields :: [Passport -> Maybe String] -> Passport -> Bool
 hasFields fields passport = all isJust (fields <*> [passport])
 
-count :: (a -> Bool) -> [a] -> Int
-count p = sum . map (fromEnum . p)
-
 part1 :: Input -> Int
 part1 = count (hasFields [byr,iyr,eyr,hgt,hcl,ecl,pid]) . parse
 
