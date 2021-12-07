@@ -9,10 +9,18 @@ type Position = Int
 alignTo :: Position -> [Position] -> Int
 alignTo p crabs = sum $ map (\c -> abs (p-c)) crabs
 
+alignTo2 :: Position -> [Position] -> Int
+alignTo2 p crabs = sum $ map cost crabs where
+   cost :: Position -> Int
+   cost c = let n = 1 + abs(c-p) in (n * (n-1)) `div` 2
+
 --------------------------------------------------------------------------------
 
 part1 :: [Position] -> Int
 part1 input = minimum $ map (flip alignTo input) input
+
+part2 :: [Position] -> Int
+part2 input = minimum $ map (flip alignTo2 input) [minimum input .. maximum input]
 
 --------------------------------------------------------------------------------
 
