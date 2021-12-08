@@ -7,9 +7,6 @@ import qualified Data.Map as M
 import Data.Tuple (swap)
 import Data.List
 
-printLines :: Show a => [a] -> IO ()
-printLines = mapM_ print
-
 (!?) :: [a] -> Int -> Maybe a
 (!?) xs n = if 0 <= n && n < length xs then Just (xs !! n) else Nothing
 
