@@ -10,61 +10,43 @@ import Data.Maybe
 
 type Cup = Int
 data CupCircle = CupCircle
-   { cups :: [Cup]
-   , pickup :: [Cup]
-   , destination :: Cup
-   } deriving (Eq, Show)
+   { size :: Int
+   , cups :: [Cup]
+   } deriving (Eq)
+
+instance Show CupCircle where
+   show (CupCircle s cs) = show $ take s cs
 
 currentCup :: CupCircle -> Cup
 currentCup = head . cups
 
-allCups :: CupCircle -> [Cup]
-allCups circle = cups circle ++ pickup circle
-
-range :: CupCircle -> (Cup, Cup)
-range circle = let all = allCups circle in (minimum all, maximum all)
-
 make :: [Cup] -> CupCircle
-make cups = CupCircle cups [] 0
+make cups = CupCircle (length cups) (loop cups)
+
+loop :: [a] -> [a]
+loop xs = xs ++ loop xs
 
 --------------------------------------------------------------------------------
 
 move :: CupCircle -> CupCircle
-move = step4 . step3 . step2 . step1
-   where
-   step1 :: CupCircle -> CupCircle
-   step1 circle = let
-      (current:three, remainder) = splitAt 4 $ cups circle
-      in CupCircle (current:remainder) three 0
+move circle = let
+   !s = size circle
+   (!current:three, remainder) = splitAt 4 $ cups circle
+   !destination = head
+      $ filter (\c -> not $ elem c three)
+      $ map (\n -> 1 + (currentCup circle - n) `mod` s) [2..]
+   !idx = fromJust $ findIndex (==destination) remainder
+   (!a,b) = splitAt (idx+1) remainder
+   in CupCircle s $ loop (take (s-1) (a ++ three ++ b) ++ [current])
 
-   step2 :: CupCircle -> CupCircle
-   step2 circle = let
-      (lo,hi) = range circle
-      nextCandidate c = if c == lo then hi else c - 1
-      candidates = filter (\c -> not $ elem c $ pickup circle)
-         $ tail
-         $ iterate nextCandidate
-         $ currentCup circle
-      in circle {destination = head candidates}
-
-   step3 :: CupCircle -> CupCircle
-   step3 circle = let
-      idx = fromJust $ findIndex (== destination circle) $ cups circle
-      (a,b) = splitAt (idx + 1) $ cups circle
-      in CupCircle (a ++ pickup circle ++ b) [] 0
-
-step4 :: CupCircle -> CupCircle
-step4 circle = circle {cups = tail (cups circle) ++ [head (cups circle)]}
+step :: CupCircle -> CupCircle
+step circle = circle {cups = tail (cups circle)}
 
 doMove :: Int -> CupCircle -> CupCircle
-doMove 0 circle = circle
-doMove n circle = let 
-   !next = move circle
-   in doMove (n-1) next
+doMove n circle = foldr (const move) circle [1..n]
 
 order :: CupCircle -> Int
-order circle | currentCup circle /= 1 = order (step4 circle)
-order circle = read $ concat $ map show $ tail $ cups circle
+order circle = read $ foldMap show $ take (size circle - 1) $ tail $ dropWhile (/= 1) $ cups circle
 
 part1 :: [Cup] -> Int
 part1 = order . doMove 100 . make
@@ -72,29 +54,15 @@ part1 = order . doMove 100 . make
 --------------------------------------------------------------------------------
 
 make1000000 :: [Cup] -> CupCircle
-make1000000 cups = make $ take 1000000 (cups ++ [maximum cups ..])
+make1000000 cups = make $ take 1000000 (cups ++ [maximum cups + 1 ..])
 
 starCups :: CupCircle -> Int
-starCups circle | currentCup circle /= 1 = order (step4 circle)
-starCups circle = let 1:a:b:_ = cups circle in a * b
-
-type Memory = [(CupCircle, Int)]
-
-doMoveWithMem :: Int -> Memory -> CupCircle -> CupCircle
-doMoveWithMem 0 mem circle = circle
-doMoveWithMem n mem circle = case lookup circle mem of
-   Nothing -> let !next = move circle in doMoveWithMem (n-1) ((circle,n):mem) next
-   Just k -> interpolate mem n k
-   
-interpolate :: Memory -> Int -> Int -> CupCircle
-interpolate m a b = let
-   t = head $ dropWhile (<a) [0, b-a ..]
-   in case lookup t $ map (\(x,y) -> (y,x)) m of
-      Just x -> x
-      Nothing -> error "idk"
+starCups circle = let 
+   1:a:b:_ = dropWhile (/= 1) $ cups circle
+   in a * b
 
 part2 :: [Cup] -> Int
-part2 = starCups . doMoveWithMem 10000000 [] . make1000000
+part2 = starCups . doMove 10000000 . make1000000
 
 --------------------------------------------------------------------------------
 
