@@ -1,6 +1,7 @@
 module AdventOfCode.Common.Grid where
 
 import qualified Data.List as L
+import Data.Maybe (fromJust, catMaybes)
 import AdventOfCode.Common.List ((!?), padL)
 
 newtype Grid a = Grid { unpack :: [[a]] }
@@ -37,14 +38,20 @@ height (Grid g) = length g
 width :: Grid a -> Int
 width (Grid g) = if length g == 0 then 0 else length (g !! 0)
 
+dimensions :: Grid a -> (Int, Int)
+dimensions g = (width g, height g)
+
 row :: Int -> Grid a -> Maybe [a]
 row n (Grid g) = g !? n
 
 col :: Int -> Grid a -> Maybe [a]
 col n = row n . transpose
 
-(!) :: Grid a -> (Int, Int) -> a
-(!) (Grid g) (x,y) = (g !! y) !! x
+(#) :: Grid a -> (Int, Int) -> a
+(#) g p = fromJust (g #? p)
+
+(#?) :: Grid a -> (Int, Int) -> Maybe a
+(#?) (Grid g) (x,y) = (g !? y) >>= (!? x)
 
 fromCoordsList :: a -> [((Int, Int), a)] -> Grid a
 fromCoordsList def coords = let
@@ -52,3 +59,21 @@ fromCoordsList def coords = let
    maxY = maximum $ map (snd . fst) coords
    getValue (x,y) = maybe def id $ lookup (x,y) coords
    in Grid [ [ getValue (x,y) | x <- [0..maxX]] | y <- [0..maxY]]
+
+fromList :: Int -> [a] -> Grid a
+fromList width values
+   | length values `mod` width /= 0 = errorWithoutStackTrace "Grid width does not divide data length"
+   | otherwise = Grid $ aux values
+   where
+   aux :: [a] -> [[a]]
+   aux [] = []
+   aux xs = let (a,b) = splitAt width xs in a : aux b
+
+coordGrid :: (Int, Int) -> Grid (Int, Int)
+coordGrid (w,h) = Grid [[(x-1,y-1) | x <- [1..w]] | y <- [1..h]]
+
+neighbours :: Grid a -> (Int,Int) -> [a]
+neighbours g (x,y) = catMaybes $ map (g #?) [(x+1,y),(x-1,y),(x,y+1),(x,y-1)]
+
+mapWithCoords :: ((Int, Int) -> a -> b) -> Grid a -> Grid b
+mapWithCoords f g = fmap (\p -> f p (g # p)) $ coordGrid $ dimensions g
