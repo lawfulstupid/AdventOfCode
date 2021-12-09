@@ -1,7 +1,7 @@
 module AdventOfCode.Common.Grid where
 
 import qualified Data.List as L
-import Data.Maybe (fromJust, catMaybes)
+import Data.Maybe (fromJust, catMaybes, listToMaybe)
 import AdventOfCode.Common.List ((!?), padL)
 
 newtype Grid a = Grid { unpack :: [[a]] }
@@ -53,6 +53,9 @@ col n = row n . transpose
 (#?) :: Grid a -> (Int, Int) -> Maybe a
 (#?) (Grid g) (x,y) = (g !? y) >>= (!? x)
 
+set :: (Int, Int) -> a -> Grid a -> Grid a
+set p x = mapWithCoords $ \p' x' -> if p == p' then x else x'
+
 fromCoordsList :: a -> [((Int, Int), a)] -> Grid a
 fromCoordsList def coords = let
    maxX = maximum $ map (fst . fst) coords
@@ -77,3 +80,6 @@ neighbours g (x,y) = catMaybes $ map (g #?) [(x+1,y),(x-1,y),(x,y+1),(x,y-1)]
 
 mapWithCoords :: ((Int, Int) -> a -> b) -> Grid a -> Grid b
 mapWithCoords f g = fmap (\p -> f p (g # p)) $ coordGrid $ dimensions g
+
+findCoords :: (a -> Bool) -> Grid a -> Maybe (Int, Int)
+findCoords f g = listToMaybe $ catMaybes $ concat $ unpack $ mapWithCoords (\p x -> if f x then Just p else Nothing) g

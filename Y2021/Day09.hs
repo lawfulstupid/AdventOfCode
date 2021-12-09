@@ -1,21 +1,60 @@
 module AdventOfCode.Y2021.Day9 where
 
 import AdventOfCode.Common.Grid
+import Control.Monad (join)
 import Data.Maybe
+import Data.List (sortOn)
 
 --------------------------------------------------------------------------------
 
-lowPoints :: Grid Int -> [Int]
+lowPoints :: Grid Int -> [((Int, Int), Int)]
 lowPoints g = let
    isLowPoint p x = all (x <) $ neighbours g p
-   transform p x = if isLowPoint p x then Just x else Nothing
+   transform p x = if isLowPoint p x then Just (p,x) else Nothing
    in catMaybes $ concat $ unpack $ mapWithCoords transform g
 
 riskLevel :: Int -> Int
 riskLevel x = x + 1
 
 part1 :: Grid Int -> Int
-part1 = sum . map riskLevel . lowPoints
+part1 = sum . map riskLevel . map snd . lowPoints
+
+--------------------------------------------------------------------------------
+
+type FillableGrid = Grid (Maybe Int)
+data FloodFillResult = FloodFillResult
+   { grid :: FillableGrid
+   , fillSize :: Int
+   } deriving (Eq, Show)
+
+-- Join divide-and-conquered flood fills into one
+-- Assumes a was computed before b, hence b cell statuses contain a
+(+>) :: FloodFillResult -> FloodFillResult -> FloodFillResult
+a +> b = FloodFillResult (grid b) (fillSize a + fillSize b)
+
+prepareForFloodFill :: Grid Int -> FillableGrid
+prepareForFloodFill = fmap $ \n -> if n == 9 then Nothing else Just n
+
+-- Flood fill algorithm using Maybe to indicated fill status
+fillBasin :: FillableGrid -> (Int, Int) -> FloodFillResult
+fillBasin g (x,y) = let
+   res = FloodFillResult (set (x,y) Nothing g) 1
+   adj = [(x+1,y), (x-1,y), (x,y+1), (x,y-1)]
+   aux = foldr (\p r -> r +> fillBasin (grid r) p) res adj
+   in case join (g #? (x,y)) of
+      Nothing -> FloodFillResult g 0
+      Just _  -> aux 
+
+-- Returns the size of each basins, using low points as seeds for flood fill
+-- Assumes each basin has exactly one low point
+basins :: Grid Int -> [Int]
+basins g = let
+   ps = map fst $ lowPoints g
+   g' = prepareForFloodFill g
+   in map (fillSize . fillBasin g') ps
+
+part2 :: Grid Int -> Int
+part2 g = product $ take 3 $ sortOn negate $ basins g
 
 --------------------------------------------------------------------------------
 
