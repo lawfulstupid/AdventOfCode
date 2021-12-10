@@ -1,4 +1,8 @@
-module AdventOfCode.Common.Parser where
+module AdventOfCode.Common.Parser (
+   module AdventOfCode.Common.Parser,
+   module Control.Monad,
+   module Control.Applicative
+) where
 
 import Control.Monad
 import Control.Applicative
