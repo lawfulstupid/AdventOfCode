@@ -73,6 +73,16 @@ part1 = totalFlashes . doSteps 100
 
 --------------------------------------------------------------------------------
 
+synchronised :: Grid Octopus -> Bool
+synchronised = all(==0) . map energyLevel . concat . unpack
+
+part2 :: Grid Octopus -> Int
+part2 g = aux 0 g where
+   aux :: Int -> Grid Octopus -> Int
+   aux n g = if synchronised g then n else aux (n+1) $ step g
+
+--------------------------------------------------------------------------------
+
 sampleInput :: Grid Octopus
 sampleInput = Grid
    [ [5,4,8,3,1,4,3,2,2,3]
