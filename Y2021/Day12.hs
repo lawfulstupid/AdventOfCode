@@ -32,10 +32,11 @@ data CaveSystem = CaveSystem
 
 data State = State
    { visitedCaves :: [Cave]
+   , doubleVisitDone :: Bool
    } deriving (Show)
 
 defaultState :: State
-defaultState = State []
+defaultState = State [] False
 
 type Path = [Cave]
 
@@ -44,35 +45,57 @@ type Path = [Cave]
 isBig :: Cave -> Bool
 isBig = all isUpper
 
-visited :: Cave -> CaveSystem -> Bool
-visited c g = elem c $ visitedCaves $ state g
+visited :: CaveSystem -> Cave -> Bool
+visited g v = elem v $ visitedCaves $ state g
 
 canEnter :: CaveSystem -> Cave -> Bool
-canEnter g v = isBig v || (not $ visited v g)
+canEnter g v = isBig v || (not $ visited g v)
 
-addVisit :: Cave -> CaveSystem -> CaveSystem
-addVisit v g = g {state = (state g) {visitedCaves = visitedCaves (state g) `union` [v]}}
+addVisit :: CaveSystem -> Cave -> CaveSystem
+addVisit g v = g {state = (state g) {visitedCaves = visitedCaves (state g) `union` [v]}}
 
 isEndpointOf :: Cave -> Tunnel -> Bool
 isEndpointOf v e = elem v $ endpoints e
 
-exits :: Cave -> CaveSystem -> [Cave]
-exits s g = let
+exits :: VisitFunctions -> Cave -> CaveSystem -> [Cave]
+exits fs@(query,update) s g = let
    exitTunnels = filter (s `isEndpointOf`) $ tunnels g
    exitCaves = filter (/= s) $ foldMap endpoints exitTunnels
-   validExitCaves = filter (canEnter g) exitCaves
+   validExitCaves = filter (query g) exitCaves
    in validExitCaves
 
-paths :: Cave -> Cave -> CaveSystem -> [Path]
-paths s t _ | s == t = [[t]]
-paths s t g = do
-   let g' = addVisit s g
-   x <- exits s g'
-   p <- paths x t g'
+paths :: VisitFunctions -> Cave -> Cave -> CaveSystem -> [Path]
+paths fs@(query,update) s t _ | s == t = [[t]]
+paths fs@(query,update) s t g = do
+   let g' = update g s
+   x <- exits fs s g'
+   p <- paths fs x t g'
    return (s:p)
 
+
+type VisitFunctions = (CaveSystem -> Cave -> Bool, CaveSystem -> Cave -> CaveSystem)
+p1VisitFunctions :: VisitFunctions
+p1VisitFunctions = (canEnter, addVisit)
+
 part1 :: CaveSystem -> Int
-part1 = length . paths "start" "end"
+part1 = length . paths p1VisitFunctions "start" "end"
+
+--------------------------------------------------------------------------------
+
+canEnter2 :: CaveSystem -> Cave -> Bool
+canEnter2 g v = canEnter g v
+   || (not $ doubleVisitDone $ state g) && (not $ elem v ["start", "end"])
+
+addVisit2 :: CaveSystem -> Cave -> CaveSystem
+addVisit2 g v = if canEnter g v
+   then addVisit g v
+   else g {state = (state g) {doubleVisitDone = True}}
+
+p2VisitFunctions :: VisitFunctions
+p2VisitFunctions = (canEnter2, addVisit2)
+
+part2 :: CaveSystem -> Int
+part2 = length . paths p2VisitFunctions "start" "end"
 
 --------------------------------------------------------------------------------
 
