@@ -7,12 +7,17 @@ import AdventOfCode.Common.List ((!?), padL)
 newtype Grid a = Grid { unpack :: [[a]] }
    deriving (Eq)
 
+type Coords = (Int, Int)
+
 instance Show a => Show (Grid a) where
-   show g = let
-      colLengths = mapCols maximum $ fmap (length . show) g
-      showCell n cell = padL ' ' n $ show cell
-      showRow row = L.intercalate " " $ zipWith showCell colLengths row
-      in L.intercalate "\n" $ mapRows showRow g
+   show = showPretty ' ' " " show
+
+showPretty :: Char -> String -> (a -> String) -> Grid a -> String
+showPretty pad delim show g = let
+   colLengths = mapCols maximum $ fmap (length . show) g
+   showCell n cell = padL pad n $ show cell
+   showRow row = L.intercalate delim $ zipWith showCell colLengths row
+   in L.intercalate "\n" $ mapRows showRow g
 
 instance Functor Grid where
    fmap f (Grid g) = Grid $ map (map f) g
@@ -38,7 +43,7 @@ height (Grid g) = length g
 width :: Grid a -> Int
 width (Grid g) = if length g == 0 then 0 else length (g !! 0)
 
-dimensions :: Grid a -> (Int, Int)
+dimensions :: Grid a -> Coords
 dimensions g = (width g, height g)
 
 row :: Int -> Grid a -> Maybe [a]
@@ -47,16 +52,16 @@ row n (Grid g) = g !? n
 col :: Int -> Grid a -> Maybe [a]
 col n = row n . transpose
 
-(#) :: Grid a -> (Int, Int) -> a
+(#) :: Grid a -> Coords -> a
 (#) g p = fromJust (g #? p)
 
-(#?) :: Grid a -> (Int, Int) -> Maybe a
+(#?) :: Grid a -> Coords -> Maybe a
 (#?) (Grid g) (x,y) = (g !? y) >>= (!? x)
 
-set :: (Int, Int) -> a -> Grid a -> Grid a
+set :: Coords -> a -> Grid a -> Grid a
 set p x = mapWithCoords $ \p' x' -> if p == p' then x else x'
 
-fromCoordsList :: a -> [((Int, Int), a)] -> Grid a
+fromCoordsList :: a -> [(Coords, a)] -> Grid a
 fromCoordsList def coords = let
    maxX = maximum $ map (fst . fst) coords
    maxY = maximum $ map (snd . fst) coords
@@ -72,17 +77,17 @@ fromList width values
    aux [] = []
    aux xs = let (a,b) = splitAt width xs in a : aux b
 
-coordGrid :: (Int, Int) -> Grid (Int, Int)
+coordGrid :: (Int, Int) -> Grid Coords
 coordGrid (w,h) = Grid [[(x-1,y-1) | x <- [1..w]] | y <- [1..h]]
 
-neighbours :: Grid a -> (Int,Int) -> [a]
+neighbours :: Grid a -> Coords -> [a]
 neighbours g (x,y) = catMaybes $ map (g #?) [(x+1,y),(x-1,y),(x,y+1),(x,y-1)]
 
-neighboursD :: Grid a -> (Int,Int) -> [a]
+neighboursD :: Grid a -> Coords -> [a]
 neighboursD g (x,y) = catMaybes $ map (g #?) [(x+i, y+j) | i <- [-1..1], j <- [-1..1], i /= 0 || j /= 0]
 
-mapWithCoords :: ((Int, Int) -> a -> b) -> Grid a -> Grid b
+mapWithCoords :: (Coords -> a -> b) -> Grid a -> Grid b
 mapWithCoords f g = fmap (\p -> f p (g # p)) $ coordGrid $ dimensions g
 
-findCoords :: (a -> Bool) -> Grid a -> Maybe (Int, Int)
+findCoords :: (a -> Bool) -> Grid a -> Maybe Coords
 findCoords f g = listToMaybe $ catMaybes $ concat $ unpack $ mapWithCoords (\p x -> if f x then Just p else Nothing) g
