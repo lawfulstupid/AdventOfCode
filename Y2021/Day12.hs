@@ -4,9 +4,6 @@ module AdventOfCode.Y2021.Day12 where
 
 import AdventOfCode.Common.Parser
 
-import Data.Map.Strict (Map)
-import qualified Data.Map.Strict as M
-
 import Data.List
 import Data.Maybe
 import Data.Char
@@ -27,17 +24,18 @@ instance Show Tunnel where
    show (Tunnel a b) = a ++ "-" ++ b
 
 
-data CaveData = CaveData
-   { visited :: Bool
-   } deriving (Show)
-defaultCaveData = CaveData False
-
-
 data CaveSystem = CaveSystem
-   { caves :: Map Cave CaveData
-   , tunnels :: [Tunnel]
+   { tunnels :: [Tunnel]
+   , state :: State
    } deriving (Show)
 
+
+data State = State
+   { visitedCaves :: [Cave]
+   } deriving (Show)
+
+defaultState :: State
+defaultState = State []
 
 type Path = [Cave]
 
@@ -46,8 +44,14 @@ type Path = [Cave]
 isBig :: Cave -> Bool
 isBig = all isUpper
 
+visited :: Cave -> CaveSystem -> Bool
+visited c g = elem c $ visitedCaves $ state g
+
 canEnter :: CaveSystem -> Cave -> Bool
-canEnter g v = isBig v || (not $ visited $ fromJust $ M.lookup v $ caves g)
+canEnter g v = isBig v || (not $ visited v g)
+
+addVisit :: Cave -> CaveSystem -> CaveSystem
+addVisit v g = g {state = (state g) {visitedCaves = visitedCaves (state g) `union` [v]}}
 
 isEndpointOf :: Cave -> Tunnel -> Bool
 isEndpointOf v e = elem v $ endpoints e
@@ -62,7 +66,7 @@ exits s g = let
 paths :: Cave -> Cave -> CaveSystem -> [Path]
 paths s t _ | s == t = [[t]]
 paths s t g = do
-   let g' = g { caves = M.insert s (CaveData True) $ caves g }
+   let g' = addVisit s g
    x <- exits s g'
    p <- paths x t g'
    return (s:p)
@@ -87,8 +91,7 @@ myInput = makeCaveSystem ["QF-bw","end-ne","po-ju","QF-lo","po-start","XL-ne","b
 makeCaveSystem :: [String] -> CaveSystem
 makeCaveSystem input = let
    tunnels = map (parseUsing tunnelParser) input
-   caves = nub $ sort $ foldMap endpoints tunnels
-   in CaveSystem (M.fromList $ map (,defaultCaveData) caves) tunnels
+   in CaveSystem tunnels defaultState
 
 tunnelParser :: Parser Tunnel
 tunnelParser = do
