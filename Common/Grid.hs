@@ -78,6 +78,9 @@ coordGrid (w,h) = Grid [[(x-1,y-1) | x <- [1..w]] | y <- [1..h]]
 neighbours :: Grid a -> (Int,Int) -> [a]
 neighbours g (x,y) = catMaybes $ map (g #?) [(x+1,y),(x-1,y),(x,y+1),(x,y-1)]
 
+neighboursD :: Grid a -> (Int,Int) -> [a]
+neighboursD g (x,y) = catMaybes $ map (g #?) [(x+i, y+j) | i <- [-1..1], j <- [-1..1], i /= 0 || j /= 0]
+
 mapWithCoords :: ((Int, Int) -> a -> b) -> Grid a -> Grid b
 mapWithCoords f g = fmap (\p -> f p (g # p)) $ coordGrid $ dimensions g
 
