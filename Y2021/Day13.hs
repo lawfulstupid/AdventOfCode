@@ -39,6 +39,15 @@ part1 m = let
 
 --------------------------------------------------------------------------------
 
+applyAllFolds :: [Fold] -> Paper -> Paper
+applyAllFolds [] = id
+applyAllFolds (f:fs) = applyAllFolds fs . applyFold f
+
+part2 :: Manual -> Manual
+part2 m = Manual (applyAllFolds (folds m) (paper m)) []
+
+--------------------------------------------------------------------------------
+
 makePaper :: [Coords] -> Paper
 makePaper coords = fromCoordsList False $ map (\p -> (p, True)) coords
 
