@@ -45,3 +45,20 @@ deleteAt n xs = let
 
 deleteAllAt :: [Int] -> [a] -> [a]
 deleteAllAt ns xs = concat $ zipWith (\n x -> if n `elem` ns then [] else [x]) [0..] xs
+
+expBinSearchOn :: (Ord b) => (a -> b) -> b -> [a] -> Maybe a
+expBinSearchOn f t [] = Nothing
+expBinSearchOn f t (x:xs) = expSearch ([x],xs) where
+   
+   expSearch (lo,hi)
+      | null hi || t < f (head hi) = binSearch lo
+      | otherwise = expSearch $ splitAt (2 * length lo) hi
+   
+   binSearch [] = Nothing
+   binSearch xs = let
+      m = length xs `div` 2
+      p = xs !! m
+      in case compare t (f p) of
+         LT -> binSearch $ take m xs
+         EQ -> Just p
+         GT -> binSearch $ drop (m+1) xs
