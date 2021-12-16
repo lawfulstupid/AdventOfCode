@@ -59,7 +59,16 @@ col n = row n . transpose
 (#?) (Grid g) (x,y) = (g !? y) >>= (!? x)
 
 set :: Coords -> a -> Grid a -> Grid a
-set p x = mapWithCoords $ \p' x' -> if p == p' then x else x'
+set p x = mapWithCoords $ \p' -> if p == p' then const x else id
+
+setAll :: [(Coords, a)] -> Grid a -> Grid a
+setAll pxs g = foldr (uncurry set) g pxs
+
+modify :: Coords -> (a -> a) -> Grid a -> Grid a
+modify p f g = set p (f (g # p)) g
+
+toCoordsList :: Grid a -> [(Coords, a)]
+toCoordsList g = concat $ unpack $ mapWithCoords (,) g
 
 fromCoordsList :: a -> [(Coords, a)] -> Grid a
 fromCoordsList def coords = let
