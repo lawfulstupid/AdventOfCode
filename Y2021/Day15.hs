@@ -16,20 +16,21 @@ type Path = [Coords]
 --------------------------------------------------------------------------------
 
 minRiskLevelPath :: Grid Int -> Maybe Path
-minRiskLevelPath g = aux [(0,0)] ((subtract 1) $# dimensions g) where
-   aux :: Path -> Coords -> Maybe Path
-   aux path target | last path == target = Just path
-   aux path target = let
+minRiskLevelPath g = aux [(0,0)] where
+   
+   target = (subtract 1) $# dimensions g
+   
+   aux :: Path -> Maybe Path
+   aux path | last path == target = Just path
+   aux path = let
       source = last path
       score p = totalRisk g (path ++ [p]) + heuristic g p target
-      candidates = map fst
-         $ getCandidates
-         $ groupOn snd
-         $ sortOn snd
-         $ map (\p -> (p, score p))
+      candidates = safeHead []
+         $ groupOn score
+         $ sortOn score
          $ filter (not . (`elem` path))
          $ coordNeighbours g source
-      nextStep p = aux (path ++ [p]) target
+      nextStep p = aux (path ++ [p])
       solns = catMaybes $ map nextStep candidates
       in if solns == []
          then Nothing
@@ -43,8 +44,8 @@ minRiskLevelPath g = aux [(0,0)] ((subtract 1) $# dimensions g) where
       
 heuristic :: Grid RiskLevel -> Coords -> Coords -> RiskLevel
 -- heuristic g (x1,y1) (x2,y2) = abs (x2-x1) + abs (y2-y1)
-heuristic g (x1,y1) (x2,y2) = let
-   g' = drop2d (x1,y1) g
+heuristic g p _ = let
+   g' = drop2d p g
    rowMins = tail $ mapRows minimum g'
    colMins = tail $ mapCols minimum g'
    in sum (rowMins ++ colMins)
