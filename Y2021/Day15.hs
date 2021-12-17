@@ -75,7 +75,7 @@ doDijkstra target (DijkstraMap candidates m) = let
       ; guard $ tentative x'
       ; return (p, x') }
    
-   m' = M.adjust finalise current $ foldr (uncurry M.insert) m updates
+   m' = M.adjust finalise current $ M.unionWith (flip const) m (M.fromList updates)
    sorter p = [distance (m' ! p), heuristic p target, diagonality p]
    candidates' = sortOn sorter $ union (delete current candidates) (map fst updates)
    
@@ -97,50 +97,36 @@ part1 g = let
    target = (subtract 1) $# dimensions g
    DijkstraMap _ m = doDijkstra target $ makeDijkstraMap (width g) g
    in distance (m ! target)
-   
-
--- part2 :: Grid RiskLevel -> Int
--- part2 g = aux (width g * 18) (width g `div` 10) where
-   
-   -- target = (subtract 1) $# dimensions g
-   -- answer m = distance (m ! target)
-   
-   -- aux :: RiskLevel -> Int -> RiskLevel
-   -- aux hi limit = let
-      -- DijkstraMap _ m = doDijkstra target g
-      -- !x = answer m
-      -- strictBound = M.null $ M.filter (\node -> diagonality (coords node) == limit) m
-      -- next = \_ -> aux (min x hi) (limit + 1)
-      -- in if x < hi
-         -- then next ()
-         -- else if not strictBound
-            -- then x
-            -- else next ()
-
--- 100 -> 12   (12%)
--- 50  -> 13   (26%)
--- 20  -> 13   (65%)
--- 10  -> 4    (40%)
 
 --------------------------------------------------------------------------------
 
 modToRiskLevel :: Int -> RiskLevel
 modToRiskLevel n = (n-1) `mod` 9 + 1
 
-double :: Grid RiskLevel -> Grid RiskLevel
-double g = let
+expand :: Int -> Grid RiskLevel -> Grid RiskLevel
+expand k g = let
    list = map (\n -> fmap (modToRiskLevel . (+n)) g) [0..]
-   g' = Grid [ take 2 $ drop n list | n <- [0..1]]
+   g' = Grid [ take k $ drop n list | n <- [0..(k-1)]]
    in join g'
 
 quintuple :: Grid RiskLevel -> Grid RiskLevel
-quintuple g = let
-   list = map (\n -> fmap (modToRiskLevel . (+n)) g) [0..]
-   g' = Grid [ take 5 $ drop n list | n <- [0..4]]
-   in join g'
+quintuple = expand 5
 
--- part2 :: Grid RiskLevel -> Int
--- part2 = part1 . quintuple
+part1WithLimit :: Grid RiskLevel -> Int -> Int
+part1WithLimit g limit = let
+   target = (subtract 1) $# dimensions g
+   DijkstraMap _ m = doDijkstra target $ makeDijkstraMap limit g
+   in distance (m ! target)
+
+-- Couldn't make it fast enough so just wait for this sequence to converge then Ctrl+C
+part2 :: Grid RiskLevel -> [Int]
+part2 g = let g' = quintuple g in map (part1WithLimit g') [10,20..width g']
+
+-- Approximate effective limits
+-- 100 -> 12   (12%)
+-- 50  -> 13   (26%)
+-- 20  -> 13   (65%)
+-- 10  -> 4    (40%)
 
 --------------------------------------------------------------------------------
 
