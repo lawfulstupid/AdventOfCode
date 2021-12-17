@@ -89,9 +89,6 @@ diagonality (x,y) = abs (x-y)
 heuristic :: Coords -> Coords -> Int
 heuristic (x1,y1) (x2,y2) = abs (x2 - x1) + abs (y2 - y1)
 
-thenBy :: (a -> a -> Ordering) -> (a -> a -> Ordering) -> a -> a -> Ordering
-thenBy c1 c2 a b = let r1 = c1 a b in if r1 /= EQ then r1 else c2 a b
-
 part1 :: Grid RiskLevel -> Int
 part1 g = let
    target = (subtract 1) $# dimensions g

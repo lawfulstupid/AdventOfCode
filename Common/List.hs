@@ -32,6 +32,9 @@ grouping = M.fromListWith (++) . map (fmap return)
 groupOn :: Eq b => (a -> b) -> [a] -> [[a]]
 groupOn f = groupBy (\x y -> f x == f y)
 
+thenBy :: (a -> a -> Ordering) -> (a -> a -> Ordering) -> a -> a -> Ordering
+thenBy c1 c2 a b = let r1 = c1 a b in if r1 /= EQ then r1 else c2 a b
+
 reverseMap :: (Ord a, Ord b) => Map a [b] -> Map b [a]
 reverseMap m = grouping $ map swap (M.assocs m >>= \(k,vs) -> map (k,) vs)
 
