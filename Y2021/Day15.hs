@@ -1,3 +1,5 @@
+{-# LANGUAGE BangPatterns #-}
+
 module AdventOfCode.Y2021.Day15 where
 
 import AdventOfCode.Common.Grid
@@ -5,88 +7,129 @@ import AdventOfCode.Common.List
 import AdventOfCode.Common.Tuple
 import AdventOfCode.Common.Util
 
+import Control.Monad (guard)
+
 import Data.Maybe
 import Data.List
 import Data.Ord
 
-import Data.Map.Strict (Map)
+import Data.Map.Strict (Map, (!))
 import qualified Data.Map.Strict as M
 
 --------------------------------------------------------------------------------
 
 type RiskLevel = Int
-type Path = [Coords]
 
-data DijkstraStatus = Unknown | Tentative Int | Final Int
+data DijkstraStatus = Unknown | Tentative | Final
    deriving (Show, Eq)
 
 data DijkstraNode = DijkstraNode
-   { value :: RiskLevel
+   { coords :: Coords
+   , value :: RiskLevel
+   , distance :: Int
    , status :: DijkstraStatus
-   } deriving (Eq)
+   , prevNode :: Maybe Coords
+   } deriving (Show,Eq)
 
-instance Show DijkstraNode where
-   show (DijkstraNode x (Unknown)) = show x ++ "[?]"
-   show (DijkstraNode x (Tentative n)) = show x ++ "[" ++ show n ++ "?]"
-   show (DijkstraNode x (Final n)) = show x ++ "[" ++ show n ++ "]"
+(<+) :: DijkstraNode -> (Maybe Coords, Int) -> DijkstraNode
+node <+ (p,k) = case status node of
+   Unknown -> node { distance = k, status = Tentative, prevNode = p }
+   Final -> node
+   Tentative -> if k < distance node
+      then node { distance = k, prevNode = p }
+      else node
 
-(<+) :: DijkstraNode -> Int -> DijkstraNode
-DijkstraNode x Unknown <+ k = DijkstraNode x (Tentative k)
-DijkstraNode x (Tentative n) <+ k = DijkstraNode x (Tentative $ min n k)
-DijkstraNode x (Final n) <+ _ = DijkstraNode x (Final n)
-
-distance :: DijkstraStatus -> Int
-distance (Final n) = n
-distance (Tentative n) = n
-
-makeDijkstraNode :: RiskLevel -> DijkstraNode
-makeDijkstraNode x = DijkstraNode x Unknown
+makeDijkstraNode :: Coords -> RiskLevel -> DijkstraNode
+makeDijkstraNode p x = DijkstraNode p x 0 Unknown Nothing
 
 finalise :: DijkstraNode -> DijkstraNode
-finalise (DijkstraNode x (Tentative n)) = DijkstraNode x $ Final n
+finalise node = node {status = Final}
 
-tentative :: DijkstraStatus -> Bool
-tentative (Tentative _) = True
-tentative _ = False
+tentative :: DijkstraNode -> Bool
+tentative node = status node == Tentative
 
 type DijkstraMap = Map Coords DijkstraNode
 
 --------------------------------------------------------------------------------
 
-makeDijkstraMap :: Grid RiskLevel -> DijkstraMap
-makeDijkstraMap g = let
-   m = M.fromList $ toCoordsList $ fmap makeDijkstraNode g
-   in M.adjust (<+ 0) (0,0) m
+makeDijkstraMap :: Int -> Grid RiskLevel -> DijkstraMap
+makeDijkstraMap limit g = let
+   !m1 = M.fromList $ toCoordsList $ mapWithCoords makeDijkstraNode g
+   !m2 = M.adjust (<+ (Nothing, 0)) (0,0) m1
+   !m3 = M.filterWithKey (\p _ -> diagonality p <= limit) m2
+   in m3
 
-doDijkstra :: Grid RiskLevel -> DijkstraMap
-doDijkstra grid = aux (0,0) $ makeDijkstraMap grid where
+doDijkstra :: Int -> Grid RiskLevel -> DijkstraMap
+doDijkstra limit grid = aux (0,0) $ makeDijkstraMap limit grid where
 
    target = (subtract 1) $# dimensions grid
 
    aux :: Coords -> DijkstraMap -> DijkstraMap
    aux current m = let
-      currentDistance = distance $ status $ fromJust $ M.lookup current m
+      currentDistance = distance (m ! current)
       neighbours = coordNeighbours grid current
-      adjustNode x = x <+ (currentDistance + value x)
+      adjustNode x = x <+ (Just current, currentDistance + value x)
       m' = M.adjust finalise current $ foldr (M.adjust adjustNode) m neighbours
-      next = fst
-         $ minimumBy (comparing snd)
-         $ M.toList
-         $ M.map distance
-         $ M.filter tentative
-         $ M.map status m'
+      next = coords
+         $ minimumBy (comparator)
+         $ M.elems
+         $ M.filter tentative m'
       in if current == target
          then m'
          else aux next m'
 
-totalRisk :: Grid RiskLevel -> Path -> RiskLevel
-totalRisk g path = sum $ map (g#) $ tail path
+diagonality :: Coords -> Int
+diagonality (x,y) = abs (x-y)
+
+comparator :: DijkstraNode -> DijkstraNode -> Ordering
+comparator = comparing distance `thenBy` comparing (diagonality . coords)
+
+thenBy :: (a -> a -> Ordering) -> (a -> a -> Ordering) -> a -> a -> Ordering
+thenBy c1 c2 a b = let r1 = c1 a b in if r1 /= EQ then r1 else c2 a b
 
 part1 :: Grid RiskLevel -> Int
-part1 g = let
+part1 g = aux (width g * 18) (width g `div` 10) where
+   
    target = (subtract 1) $# dimensions g
-   m = doDijkstra g
-   in distance $ status $ fromJust $ M.lookup target m
+   answer m = distance (m ! target)
+   
+   aux :: RiskLevel -> Int -> RiskLevel
+   aux hi limit = let
+      !_ = debug True $ print limit
+      m = doDijkstra limit g
+      !x = answer m
+      strictBound = M.null $ M.filter (\node -> diagonality (coords node) == limit) m
+      next = \_ -> aux (min x hi) (limit + 1)
+      in if x < hi
+         then next ()
+         else if not strictBound
+            then x
+            else next ()
+
+-- 100 -> 12   (12%)
+-- 50  -> 13   (26%)
+-- 20  -> 13   (65%)
+-- 10  -> 4    (40%)
+
+--------------------------------------------------------------------------------
+
+modToRiskLevel :: Int -> RiskLevel
+modToRiskLevel n = (n-1) `mod` 9 + 1
+
+double :: Grid RiskLevel -> Grid RiskLevel
+double g = let
+   list = map (\n -> fmap (modToRiskLevel . (+n)) g) [0..]
+   g' = Grid [ take 2 $ drop n list | n <- [0..1]]
+   in join g'
+
+quintuple :: Grid RiskLevel -> Grid RiskLevel
+quintuple g = let
+   list = map (\n -> fmap (modToRiskLevel . (+n)) g) [0..]
+   g' = Grid [ take 5 $ drop n list | n <- [0..4]]
+   in join g'
+
+part2 :: Grid RiskLevel -> Int
+part2 = part1 . quintuple
 
 --------------------------------------------------------------------------------
 
