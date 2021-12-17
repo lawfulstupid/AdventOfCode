@@ -52,11 +52,7 @@ string :: Parser String
 string = pure "" <|> liftA2 (flip (:)) string char
 
 chars :: Int -> Parser String
-chars 0 = pure ""
-chars n = do
-   c <- char
-   s <- chars (n-1)
-   return (c:s)
+chars n = replicateP n char 
 
 match :: String -> Parser String
 match lit = do
@@ -78,6 +74,9 @@ greedy f = Parser $ \s -> let
    result = sortOn (length . snd) $ apply f s
    maxlen = length $ snd $ head result
    in takeWhile ((maxlen==) . length . snd) result
+
+replicateP :: Int -> Parser a -> Parser [a]
+replicateP n f = reverse <$> sequence (replicate n f)
 
 parseUsing :: Parser a -> String -> a
 parseUsing p s = case parseM p s of

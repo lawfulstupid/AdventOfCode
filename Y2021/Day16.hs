@@ -11,7 +11,10 @@ import Control.Monad
 
 --------------------------------------------------------------------------------
 
-data PacketValue = Literal Int | Operator [Packet]
+data Operator = Sum | Product | Minimum | Maximum | GreaterThan | LessThan | EqualTo
+   deriving (Show, Eq, Enum, Bounded)
+
+data PacketValue = Literal Int | Operation Operator [Packet]
    deriving (Show)
 
 data Packet = Packet
@@ -24,16 +27,34 @@ data Packet = Packet
 getSubPackets :: Packet -> [Packet]
 getSubPackets p = case value p of
    Literal _ -> []
-   Operator ps -> ps
+   Operation _ ps -> ps
 
 sumVersionNumbers :: Packet -> Int
 sumVersionNumbers p = version p + sum (map sumVersionNumbers (getSubPackets p))
 
+buildPacket :: String -> Packet
+buildPacket input = parseUsing packetParser (input >>= hexToBCD)
+
 part1 :: String -> Int
-part1 input = let
-   binString = input >>= hexToBCD
-   packet = parseUsing packetParser binString
-   in sumVersionNumbers packet
+part1 = sumVersionNumbers . buildPacket
+
+--------------------------------------------------------------------------------
+
+eval :: Packet -> Int
+eval (Packet _ (Literal n)) = n
+eval (Packet _ (Operation op ps)) = evalOp op $ map eval ps
+
+evalOp :: Operator -> [Int] -> Int
+evalOp Sum = sum
+evalOp Product = product
+evalOp Minimum = minimum
+evalOp Maximum = maximum
+evalOp GreaterThan = \[a,b] -> if a > b then 1 else 0
+evalOp LessThan = \[a,b] -> if a < b then 1 else 0
+evalOp EqualTo = \[a,b] -> if a == b then 1 else 0
+
+part2 :: String -> Int
+part2 = eval . buildPacket
 
 --------------------------------------------------------------------------------
 
@@ -69,7 +90,7 @@ headerParser = do
 pickValueParser :: Int -> Parser PacketValue
 pickValueParser = \case
    4 -> literalParser
-   _ -> operatorParser
+   n -> operatorParser n
 
 literalParser :: Parser PacketValue
 literalParser = do
@@ -79,19 +100,29 @@ literalParser = do
    aux :: Parser String
    aux = chars 5 >>= \(l:b) -> if l == '0' then return b else fmap (b++) aux
 
-operatorParser :: Parser PacketValue
-operatorParser = do
+operatorParser :: Int -> Parser PacketValue
+operatorParser typeID = do
    lengthTypeID <- char
-   if lengthTypeID == '0' then operator0Parser else operator1Parser
+   subPackets <- if lengthTypeID == '0' then operator0Parser else operator1Parser
+   return $ Operation (getOperator typeID) subPackets
 
-operator0Parser :: Parser PacketValue
+operator0Parser :: Parser [Packet]
 operator0Parser = do
    subPacketsTotalLength <- readBin <$> chars 15
    subPacketBits <- chars subPacketsTotalLength
-   Operator <$> parseM (many subPacketParser) subPacketBits
+   parseM (many subPacketParser) subPacketBits
 
-operator1Parser :: Parser PacketValue
+operator1Parser :: Parser [Packet]
 operator1Parser = do
    numberOfSubPackets <- readBin <$> chars 11
-   subPackets <- sequence $ replicate numberOfSubPackets subPacketParser
-   return $ Operator subPackets
+   replicateP numberOfSubPackets subPacketParser
+
+getOperator :: Int -> Operator
+getOperator = \case
+   0 -> Sum
+   1 -> Product
+   2 -> Minimum
+   3 -> Maximum
+   5 -> GreaterThan
+   6 -> LessThan
+   7 -> EqualTo
