@@ -89,8 +89,8 @@ fromList width values
 coordGrid :: (Int, Int) -> Grid Coords
 coordGrid (w,h) = Grid [[(x-1,y-1) | x <- [1..w]] | y <- [1..h]]
 
-coordNeighbours :: Grid a -> Coords -> [Coords]
-coordNeighbours g (x,y) = filter (\p -> isJust (g #? p)) [(x+1,y),(x-1,y),(x,y+1),(x,y-1)]
+coordNeighbours :: Coords -> [Coords]
+coordNeighbours (x,y) = [(x+1,y),(x-1,y),(x,y+1),(x,y-1)]
 
 neighbours :: Grid a -> Coords -> [a]
 neighbours g (x,y) = catMaybes $ map (g #?) [(x+1,y),(x-1,y),(x,y+1),(x,y-1)]

@@ -7,7 +7,7 @@ import AdventOfCode.Common.List
 import AdventOfCode.Common.Tuple
 import AdventOfCode.Common.Util
 
-import Control.Monad (guard)
+import Control.Monad hiding (join)
 
 import Data.Maybe
 import Data.List
@@ -48,7 +48,10 @@ finalise node = node {status = Final}
 tentative :: DijkstraNode -> Bool
 tentative node = status node == Tentative
 
-type DijkstraMap = Map Coords DijkstraNode
+data DijkstraMap = DijkstraMap
+   { tentativeNodes :: [(Coords)] -- assumed to be sorted by comparator
+   , allNodes :: Map Coords DijkstraNode
+   } deriving (Show)
 
 --------------------------------------------------------------------------------
 
@@ -57,54 +60,62 @@ makeDijkstraMap limit g = let
    !m1 = M.fromList $ toCoordsList $ mapWithCoords makeDijkstraNode g
    !m2 = M.adjust (<+ (Nothing, 0)) (0,0) m1
    !m3 = M.filterWithKey (\p _ -> diagonality p <= limit) m2
-   in m3
+   in DijkstraMap [(0,0)] m3
 
-doDijkstra :: Int -> Grid RiskLevel -> DijkstraMap
-doDijkstra limit grid = aux (0,0) $ makeDijkstraMap limit grid where
-
-   target = (subtract 1) $# dimensions grid
-
-   aux :: Coords -> DijkstraMap -> DijkstraMap
-   aux current m = let
-      currentDistance = distance (m ! current)
-      neighbours = coordNeighbours grid current
-      adjustNode x = x <+ (Just current, currentDistance + value x)
-      m' = M.adjust finalise current $ foldr (M.adjust adjustNode) m neighbours
-      next = coords
-         $ minimumBy (comparator)
-         $ M.elems
-         $ M.filter tentative m'
-      in if current == target
-         then m'
-         else aux next m'
+doDijkstra :: Coords -> DijkstraMap -> DijkstraMap
+doDijkstra target (DijkstraMap candidates m) = let
+   current = head candidates
+   currentDistance = distance (m ! current)
+   neighbours = coordNeighbours current
+   
+   updates = do
+      { p <- neighbours
+      ; x <- maybeToList $ M.lookup p m
+      ; let x' = x <+ (Just current, currentDistance + value x)
+      ; guard $ tentative x'
+      ; return (p, x') }
+   
+   m' = M.adjust finalise current $ foldr (uncurry M.insert) m updates
+   sorter p = [distance (m' ! p), heuristic p target, diagonality p]
+   candidates' = sortOn sorter $ union (delete current candidates) (map fst updates)
+   
+   in if current == target
+      then DijkstraMap [] m'
+      else doDijkstra target $ DijkstraMap candidates' m'
 
 diagonality :: Coords -> Int
 diagonality (x,y) = abs (x-y)
 
-comparator :: DijkstraNode -> DijkstraNode -> Ordering
-comparator = comparing distance `thenBy` comparing (diagonality . coords)
+heuristic :: Coords -> Coords -> Int
+heuristic (x1,y1) (x2,y2) = abs (x2 - x1) + abs (y2 - y1)
 
 thenBy :: (a -> a -> Ordering) -> (a -> a -> Ordering) -> a -> a -> Ordering
 thenBy c1 c2 a b = let r1 = c1 a b in if r1 /= EQ then r1 else c2 a b
 
 part1 :: Grid RiskLevel -> Int
-part1 g = aux (width g * 18) (width g `div` 10) where
-   
+part1 g = let
    target = (subtract 1) $# dimensions g
-   answer m = distance (m ! target)
+   DijkstraMap _ m = doDijkstra target $ makeDijkstraMap (width g) g
+   in distance (m ! target)
    
-   aux :: RiskLevel -> Int -> RiskLevel
-   aux hi limit = let
-      !_ = debug True $ print limit
-      m = doDijkstra limit g
-      !x = answer m
-      strictBound = M.null $ M.filter (\node -> diagonality (coords node) == limit) m
-      next = \_ -> aux (min x hi) (limit + 1)
-      in if x < hi
-         then next ()
-         else if not strictBound
-            then x
-            else next ()
+
+-- part2 :: Grid RiskLevel -> Int
+-- part2 g = aux (width g * 18) (width g `div` 10) where
+   
+   -- target = (subtract 1) $# dimensions g
+   -- answer m = distance (m ! target)
+   
+   -- aux :: RiskLevel -> Int -> RiskLevel
+   -- aux hi limit = let
+      -- DijkstraMap _ m = doDijkstra target g
+      -- !x = answer m
+      -- strictBound = M.null $ M.filter (\node -> diagonality (coords node) == limit) m
+      -- next = \_ -> aux (min x hi) (limit + 1)
+      -- in if x < hi
+         -- then next ()
+         -- else if not strictBound
+            -- then x
+            -- else next ()
 
 -- 100 -> 12   (12%)
 -- 50  -> 13   (26%)
@@ -128,8 +139,8 @@ quintuple g = let
    g' = Grid [ take 5 $ drop n list | n <- [0..4]]
    in join g'
 
-part2 :: Grid RiskLevel -> Int
-part2 = part1 . quintuple
+-- part2 :: Grid RiskLevel -> Int
+-- part2 = part1 . quintuple
 
 --------------------------------------------------------------------------------
 
