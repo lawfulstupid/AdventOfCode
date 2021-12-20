@@ -7,7 +7,12 @@ module AdventOfCode.Common.Parser (
 import Control.Monad
 import Control.Applicative
 import Control.Monad.Fail
+import qualified Control.Monad.Fail as MF
 
+import Data.Maybe
+import Data.List
+
+--------------------------------------------------------------------------------
 
 newtype Parser a = Parser {apply :: ReadS a}
 
@@ -46,6 +51,9 @@ char = Parser $ \s -> if null s then [] else [(head s, tail s)]
 string :: Parser String
 string = pure "" <|> liftA2 (flip (:)) string char
 
+chars :: Int -> Parser String
+chars n = replicateP n char 
+
 match :: String -> Parser String
 match lit = do
    s <- string
@@ -61,12 +69,24 @@ whitespace = some $ do
 reader :: Read a => Parser a
 reader = Parser reads
 
+greedy :: Parser a -> Parser a
+greedy f = Parser $ \s -> let
+   result = sortOn (length . snd) $ apply f s
+   maxlen = length $ snd $ head result
+   in takeWhile ((maxlen==) . length . snd) result
+
+replicateP :: Int -> Parser a -> Parser [a]
+replicateP n f = reverse <$> sequence (replicate n f)
+
 parseUsing :: Parser a -> String -> a
-parseUsing p s = case parseMaybe p s of
+parseUsing p s = case parseM p s of
    Just x  -> x
-   Nothing -> error "Failed to parse"
+   Nothing -> error "failed to parse"
+
+parseM :: Monad m => Parser a -> String -> m a
+parseM p s = case map fst $ filter (null . snd) $ apply p s of
+   [x] -> return x
+   _   -> Prelude.fail "failed to parse"
 
 parseMaybe :: Parser a -> String -> Maybe a
-parseMaybe p s = case filter (null . snd) $ apply p s of
-   [(x,_)] -> Just x
-   _ -> Nothing
+parseMaybe = parseM
