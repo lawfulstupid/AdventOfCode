@@ -56,7 +56,7 @@ chars n = replicateP n char
 
 match :: String -> Parser String
 match lit = do
-   s <- string
+   s <- chars (length lit)
    guard (s == lit)
    return s
 

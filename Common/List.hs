@@ -41,6 +41,10 @@ reverseMap m = grouping $ map swap (M.assocs m >>= \(k,vs) -> map (k,) vs)
 padL :: a -> Int -> [a] -> [a]
 padL x n xs = replicate (n - length xs) x ++ xs
 
+substringIndex :: Eq a => [a] -> [a] -> Maybe Int
+substringIndex sub [] = Nothing
+substringIndex sub str = if isPrefixOf sub str then Just 0 else (+1) <$> substringIndex sub (tail str)
+
 deleteAt :: Int -> [a] -> [a]
 deleteAt n xs = let
    (h,_:t) = splitAt n xs
