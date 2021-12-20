@@ -89,6 +89,14 @@ part1 = magnitude . sumSFN
 
 --------------------------------------------------------------------------------
 
+part2 :: [SFN] -> Int
+part2 input = maximum $ do
+   a <- input
+   b <- input
+   return $ magnitude (a + b)
+
+--------------------------------------------------------------------------------
+
 sfnParser :: Parser SFN
 sfnParser = (Lit <$> reader) <|> do
    match "["
