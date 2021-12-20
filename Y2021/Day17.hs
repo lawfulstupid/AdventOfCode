@@ -2,6 +2,7 @@ module AdventOfCode.Y2021.Day17 where
 
 import AdventOfCode.Common.Grid (Coords)
 import AdventOfCode.Common.Tuple
+import AdventOfCode.Common.Util
 
 import Data.List
 import Data.Maybe
@@ -133,7 +134,12 @@ xVelocityRange target = let
 
 xXx_LARGE_NUMBER_xXx = 1000000
 
+-- Find largest y such that sequence 0,y+1,2y+3,3y+6,... always contains a value in the target y range
+maxYVelocity :: TargetArea -> Int
+maxYVelocity target = subtract 1 $ negate $ fst $ yRange target
 
+part1 :: TargetArea -> Int
+part1 target = apex $ maxYVelocity target
 
 --------------------------------------------------------------------------------
 
