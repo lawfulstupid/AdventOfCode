@@ -4,6 +4,8 @@ import AdventOfCode.Common.Grid (Coords)
 import AdventOfCode.Common.Tuple
 import AdventOfCode.Common.Util
 
+import Control.Monad
+
 import Data.List
 import Data.Maybe
 
@@ -11,107 +13,15 @@ import Data.Maybe
 
 type Range = (Int, Int)
 
-data Probe = Probe
-   { position :: Coords
-   , velocity :: Coords
-   } deriving (Show, Eq)
-
-initialVelocity :: Coords -> Probe
-initialVelocity v = Probe (0,0) v
-
 data TargetArea = TargetArea
    { xRange :: Range
    , yRange :: Range
    } deriving (Show, Eq)
 
-hits :: Probe -> TargetArea -> Bool
-probe `hits` target = let
-   (x,y) = position probe
-   in and [rangeCompare x (xRange target) == EQ, rangeCompare y (yRange target) == EQ]
-
-data Quadrant = X | A | B | C | D | E | F | G | H
-   deriving (Show, Eq, Enum, Bounded)
-
-{-
-   A │ B │ C
-  ───┼───┼───
-   D │ X │ E
-  ───┼───┼───
-   F │ G │ H
-X = target area
--}
-
-data LaunchResult = Hit
-   | Overshoot -- reduce x or y
-   | Undershoot -- increase x or y
-   | TooFast -- reduce x
-   | Fallthrough -- falling too fast, change y
-   | Short -- decrease x and maybe change y
-   deriving (Show, Eq, Enum, Bounded)
-
 --------------------------------------------------------------------------------
-
-step :: Probe -> Probe
-step probe = let
-   (x,y) = position probe
-   (u,v) = velocity probe
-   pos' = (x + u, y + v)
-   vel' = (u - signum u, v - 1)
-   in probe { position = pos', velocity = vel' }
-
-willHit :: Probe -> TargetArea -> Bool
-probe `willHit` target
-   | probe `hits` target = True
-   | snd (position probe) < fst (yRange target) = False
-   | fst (position probe) > snd (xRange target) = False
-   | otherwise = (step probe) `willHit` target
-
-
-quadrant :: TargetArea -> Coords -> Quadrant
-quadrant target (x,y) = case (rangeCompare y $ yRange target, rangeCompare x $ xRange target) of
-   (GT, LT) -> A
-   (GT, EQ) -> B
-   (GT, GT) -> C
-   (EQ, LT) -> D
-   (EQ, EQ) -> X
-   (EQ, GT) -> E
-   (LT, LT) -> F
-   (LT, EQ) -> G
-   (LT, GT) -> H
 
 rangeCompare :: Int -> Range -> Ordering
 rangeCompare x (a,b) = if x < a then LT else if b < x then GT else EQ
-
-simulate :: Coords -> TargetArea -> LaunchResult
-simulate v target = aux $ map (quadrant target . position) $ iterate step $ initialVelocity v
-   where
-   aux :: [Quadrant] -> LaunchResult
-   aux (X:_) = Hit
-   aux (A:C:_) = TooFast
-   aux (A:E:_) = TooFast
-   aux (A:F:_) = Fallthrough
-   aux (A:G:_) = Fallthrough
-   aux (A:H:_) = Fallthrough
-   aux (B:C:_) = Overshoot
-   aux (B:E:_) = Overshoot
-   aux (B:G:_) = Fallthrough
-   aux (B:H:_) = Fallthrough
-   aux (C:E:_) = Overshoot
-   aux (C:H:_) = Fallthrough
-   aux (D:C:_) = TooFast
-   aux (D:E:_) = TooFast
-   aux (D:F:_) = Undershoot
-   aux (D:G:_) = Undershoot
-   aux (D:H:_) = TooFast
-   aux (F:C:_) = TooFast
-   aux (F:E:_) = TooFast
-   aux (F:H:_) = TooFast
-   aux (G:C:_) = Short
-   aux (G:E:_) = Short
-   aux (G:H:_) = Short
-   aux (H:C:_) = Short
-   aux (H:E:_) = Short
-   aux (_:qs) = aux qs
 
 -- Computes maximum y position for given initial y velocity
 -- / maximum x position for given initial x velocity
@@ -132,7 +42,7 @@ xVelocityRange target = let
       ; xs -> Just (head xs + 1, makeBigger (last xs + 1) x) }
    in catMaybes $ map (sequence . msnd stepsToHitTarget . two) [a..maxX]
 
-xXx_LARGE_NUMBER_xXx = 1000000
+xXx_LARGE_NUMBER_xXx = 1000000000
 
 -- Find largest y such that sequence 0,y+1,2y+3,3y+6,... always contains a value in the target y range
 maxYVelocity :: TargetArea -> Int
@@ -140,6 +50,42 @@ maxYVelocity target = subtract 1 $ negate $ fst $ yRange target
 
 part1 :: TargetArea -> Int
 part1 target = apex $ maxYVelocity target
+
+--------------------------------------------------------------------------------
+
+-- Computes the set of initial y velocities that can hit the target,
+-- paired with the number of steps required to hit (min and max)
+yVelocityRange :: TargetArea -> [(Int, Range)]
+yVelocityRange target = aux $ maxYVelocity target where
+   range = yRange target
+   path y = 0 : map (y+) (path (y-1))
+   
+   aux :: Int -> [(Int, Range)]
+   aux v = let
+      p@(_:(_,p1):_) = zip [0..] $ path v
+      hitSteps = map fst
+         $ takeWhile (\(n,y) -> rangeCompare y range == EQ)
+         $ dropWhile (\(n,y) -> rangeCompare y range == GT) p
+      next = aux (v-1)
+      -- if after first step, probe is below target area, then smaller velocities will also miss so stop searching here
+      in if rangeCompare p1 range == LT
+         then []
+         else if hitSteps == []
+            then next
+            else (v, (head hitSteps, last hitSteps)) : next
+
+hasOverlap :: Range -> Range -> Bool
+hasOverlap (a,b) (c,d) = not (b < c || d < a)
+
+successVelocities :: TargetArea -> [(Int, Int)]
+successVelocities target = do
+   (u, xSteps) <- xVelocityRange target
+   (v, ySteps) <- yVelocityRange target
+   guard $ hasOverlap xSteps ySteps
+   return (u,v)
+
+part2 :: TargetArea -> Int
+part2 = length . successVelocities
 
 --------------------------------------------------------------------------------
 
