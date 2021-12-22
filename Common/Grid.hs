@@ -2,7 +2,7 @@ module AdventOfCode.Common.Grid where
 
 import qualified Data.List as L
 import Data.Maybe (fromJust, catMaybes, listToMaybe, isJust)
-import AdventOfCode.Common.List ((!?), padL)
+import AdventOfCode.Common.List ((!?), padL, deleteAt)
 
 newtype Grid a = Grid { unpack :: [[a]] }
    deriving (Eq)
@@ -115,3 +115,9 @@ concatH (Grid g1) (Grid g2) = Grid $ zipWith (++) g1 g2
 
 concatV :: Grid a -> Grid a -> Grid a
 concatV (Grid g1) (Grid g2) = Grid (g1 ++ g2)
+
+deleteRow :: Int -> Grid a -> Grid a
+deleteRow n (Grid g) = Grid (deleteAt n g)
+
+deleteCol :: Int -> Grid a -> Grid a
+deleteCol n = transpose . deleteRow n . transpose
