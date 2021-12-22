@@ -10,7 +10,7 @@ data Vector a = Vec
    { x :: a
    , y :: a
    , z :: a
-   } deriving (Eq)
+   } deriving (Eq, Ord)
 
 instance Show a => Show (Vector a) where
    show (Vec x y z) = show (x,y,z)

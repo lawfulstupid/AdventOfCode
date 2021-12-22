@@ -1,6 +1,7 @@
 module AdventOfCode.Y2021.Day19 where
 
 import AdventOfCode.Common.Vector3
+import AdventOfCode.Common.List
 
 import Control.Monad
 
@@ -11,11 +12,14 @@ import Data.Maybe
 
 data Scanner = Scanner
    { idNum :: Int
-   , readings :: Beacons
+   , beacons :: Beacons
+   , diffSet :: [Vector Int]
    } deriving (Show)
 
+type KnownBeacons = Scanner
+
 printScanner :: Scanner -> IO ()
-printScanner (Scanner n vs) = do
+printScanner (Scanner n vs _) = do
    putStrLn ("--- scanner " ++ show n ++ " ---")
    forM_ vs (putStrLn . init . tail . show)
    putStrLn ""
@@ -24,49 +28,66 @@ type Beacons = [Vector Int]
 
 --------------------------------------------------------------------------------
 
+applyLT :: (Vector Int -> Vector Int) -> Scanner -> Scanner
+applyLT t (Scanner n vs ds) = Scanner n (map t vs) (map t ds)
+
 getRotations :: Scanner -> [Scanner]
-getRotations (Scanner n vs) = [Scanner n $ map (apply r) vs | r <- rotations]
+getRotations s = [applyLT (apply r) s | r <- rotations]
 
 diffs :: Beacons -> [Vector Int]
-diffs vs = [u - v | u <- vs, v <- vs]
+diffs vs = let
+   vs' = sort vs
+   in do
+      (u:vs'') <- tails vs'
+      v <- vs''
+      return (u - v)
 
-hasTranslation :: Beacons -> Beacons -> Bool
-hasTranslation xs ys = length (intersect (diffs xs) (diffs ys)) >= 78
+-- Given a set of "true" beacon locations and a rotated scanner,
+-- determine if the scanner readings can be translated to overlap the known beacons
+hasTranslation :: KnownBeacons -> Scanner -> Bool
+hasTranslation known scanner = hasLength 66 $ intersect (diffs$beacons known) (diffs$beacons scanner)
 
-getTranslated :: Beacons -> Beacons -> Maybe Beacons
-getTranslated xs ys = listToMaybe $ do
+-- Given a set of "true" beacon locations and a rotated scanner,
+-- translate the scanner readings so they overlap the known beacons
+getTranslated :: KnownBeacons -> Scanner -> Maybe Beacons
+getTranslated known scanner = listToMaybe $ do
+   let xs = beacons known
+   let ys = beacons scanner
    x <- xs
    y <- ys
    let t = x - y
    let ys' = map (t+) ys
-   guard (length (intersect xs ys') >= 12)
+   guard (hasLength 12 $ intersect xs ys')
    return ys'
 
-align :: Beacons -> Scanner -> Maybe Beacons
-align bs s = let
-   vs' = do
-      Scanner _ vs <- getRotations s
-      guard $ hasTranslation bs vs
-      let t = getTranslated bs vs
-      guard $ isJust t
-      return $ fromJust t
-   in if null vs' then Nothing else Just (bs `union` (head vs'))
+-- Aligns and adds scanner readings to a set of "true" beacon locations
+align :: KnownBeacons -> Scanner -> Maybe KnownBeacons
+align known scanner = fmap (known <+) $ listToMaybe $ catMaybes $ do
+   rotScan <- getRotations scanner
+   guard $ hasTranslation known rotScan
+   return $ getTranslated known rotScan
 
-triangulate :: [Scanner] -> Beacons
-triangulate (s:ss) = aux (readings s) ss where
-   aux :: Beacons -> [Scanner] -> Beacons
-   aux bs [] = bs
-   aux bs (s:c) = case align bs s of
-      Just bs' -> aux bs' c
-      Nothing -> aux bs (c ++ [s])
+(<+) :: KnownBeacons -> Beacons -> KnownBeacons
+known <+ new = makeKnownBeacons (beacons known `union` new)
+
+triangulate :: [Scanner] -> KnownBeacons
+triangulate (s:ss) = aux s ss where
+   aux :: KnownBeacons -> [Scanner] -> KnownBeacons
+   aux known [] = known
+   aux known (s:c) = case align known s of
+      Just k -> aux k c
+      Nothing -> aux known (c ++ [s])
+
+makeKnownBeacons :: Beacons -> KnownBeacons
+makeKnownBeacons = makeScanner 0
 
 part1 :: [Scanner] -> Int
-part1 = length . triangulate
+part1 = length . beacons . triangulate
 
 --------------------------------------------------------------------------------
 
 makeScanner :: Int -> [Vector Int] -> Scanner
-makeScanner n vs = Scanner n vs
+makeScanner n vs = Scanner n vs (diffs vs)
 
 sampleInput :: [Scanner]
 sampleInput = 

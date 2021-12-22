@@ -10,6 +10,11 @@ import Data.List
 (!?) :: [a] -> Int -> Maybe a
 (!?) xs n = if 0 <= n && n < length xs then Just (xs !! n) else Nothing
 
+-- For checking the length of a possibly infinite list
+-- hasLength n xs == (length xs >= n)
+hasLength :: Int -> [a] -> Bool
+hasLength n xs = length (take n xs) == n
+
 count :: (a -> Bool) -> [a] -> Int
 count f = length . filter f
 
