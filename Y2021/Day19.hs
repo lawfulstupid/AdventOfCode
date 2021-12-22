@@ -32,9 +32,6 @@ diffSet (KnownBeacons _ ds) = ds
 makeKnownBeacons :: Beacons -> KnownBeacons
 makeKnownBeacons bs = KnownBeacons bs $ diffs bs
 
-(<+) :: KnownBeacons -> Beacons -> KnownBeacons
-known <+ new = makeKnownBeacons (beacons known `union` new)
-
 
 class HasBeacons a where
    beacons :: a -> Beacons
@@ -70,23 +67,27 @@ hasTranslation known scanner = hasLength matchingThresholdPairs
 
 -- Given a set of "true" beacon locations and a rotated scanner,
 -- translate the scanner readings so they overlap the known beacons
-getTranslated :: KnownBeacons -> Scanner -> Maybe Beacons
-getTranslated known scanner = listToMaybe $ do
+-- Joins the two sets together to get a new view "true" view
+getAligned :: KnownBeacons -> Scanner -> Maybe Beacons
+getAligned known scanner = listToMaybe $ do
    let xs = beacons known
    let ys = beacons scanner
    x <- xs
    y <- ys
    let t = x - y
    let ys' = map (t+) ys
-   guard (hasLength matchingThreshold $ intersect xs ys')
-   return ys'
+   let u = union xs ys'
+   -- Equivalent to guard (length (intersect xs ys') >= matchingThreshold)
+   -- Do it this way since we have to compute the union anyway
+   guard (length u + matchingThreshold <= length xs + length ys')
+   return u
 
 -- Aligns and adds scanner readings to a set of "true" beacon locations
 align :: KnownBeacons -> Scanner -> Maybe KnownBeacons
-align known scanner = fmap (known <+) $ listToMaybe $ catMaybes $ do
+align known scanner = fmap makeKnownBeacons $ listToMaybe $ catMaybes $ do
    rotScan <- getRotations scanner
    guard $ hasTranslation known rotScan
-   return $ getTranslated known rotScan
+   return $ getAligned known rotScan
 
 triangulate :: [Scanner] -> KnownBeacons
 triangulate (s:ss) = aux (makeKnownBeacons $ beacons s) ss where
