@@ -7,7 +7,7 @@ import AdventOfCode.Common.List
 import AdventOfCode.Common.Tuple
 import AdventOfCode.Common.Util
 
-import Control.Monad hiding (join)
+import Control.Monad
 
 import Data.Maybe
 import Data.List
@@ -104,7 +104,7 @@ expand :: Int -> Grid RiskLevel -> Grid RiskLevel
 expand k g = let
    list = map (\n -> fmap (modToRiskLevel . (+n)) g) [0..]
    g' = Grid [ take k $ drop n list | n <- [0..(k-1)]]
-   in join g'
+   in concatG g'
 
 quintuple :: Grid RiskLevel -> Grid RiskLevel
 quintuple = expand 5

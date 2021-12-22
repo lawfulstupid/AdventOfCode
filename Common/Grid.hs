@@ -107,11 +107,11 @@ findCoords f g = listToMaybe $ catMaybes $ concat $ unpack $ mapWithCoords (\p x
 drop2d :: Coords -> Grid a -> Grid a
 drop2d (x,y) (Grid g) = Grid (map (drop x) $ drop y g)
 
-join :: Grid (Grid a) -> Grid a
-join g = foldr1 joinH $ mapCols (foldr1 joinV) g
+concatG :: Grid (Grid a) -> Grid a
+concatG g = foldr1 concatH $ mapCols (foldr1 concatV) g
 
-joinH :: Grid a -> Grid a -> Grid a
-joinH (Grid g1) (Grid g2) = Grid $ zipWith (++) g1 g2
+concatH :: Grid a -> Grid a -> Grid a
+concatH (Grid g1) (Grid g2) = Grid $ zipWith (++) g1 g2
 
-joinV :: Grid a -> Grid a -> Grid a
-joinV (Grid g1) (Grid g2) = Grid (g1 ++ g2)
+concatV :: Grid a -> Grid a -> Grid a
+concatV (Grid g1) (Grid g2) = Grid (g1 ++ g2)
