@@ -23,14 +23,17 @@ printScanner (Scanner n vs) = do
    putStrLn ""
 
 
-data KnownBeacons = KnownBeacons Beacons [Vector Int]
+data KnownBeacons = KnownBeacons Beacons Diffs [Vector Int]
    deriving (Show)
 
 diffSet :: KnownBeacons -> Diffs
-diffSet (KnownBeacons _ ds) = ds
+diffSet (KnownBeacons _ ds _) = ds
+
+translations :: KnownBeacons -> [Vector Int]
+translations (KnownBeacons _ _ ts) = ts
 
 makeKnownBeacons :: Beacons -> KnownBeacons
-makeKnownBeacons bs = KnownBeacons bs $ diffs bs
+makeKnownBeacons bs = KnownBeacons bs (diffs bs) []
 
 
 class HasBeacons a where
@@ -40,18 +43,15 @@ instance HasBeacons Scanner where
    beacons (Scanner _ bs) = bs
 
 instance HasBeacons KnownBeacons where
-   beacons (KnownBeacons bs _) = bs
+   beacons (KnownBeacons bs _ _) = bs
 
 --------------------------------------------------------------------------------
 
 matchingThreshold = 12 :: Int
 matchingThresholdPairs = sum [1 .. matchingThreshold-1] :: Int
 
-applyLT :: (Vector Int -> Vector Int) -> Scanner -> Scanner
-applyLT t (Scanner n vs) = Scanner n $ map t vs
-
 getRotations :: Scanner -> [Scanner]
-getRotations s = [applyLT (apply r) s | r <- rotations]
+getRotations (Scanner n vs) = [Scanner n $ map (applyTransform r) vs | r <- rotations]
 
 diffs :: Beacons -> Diffs
 diffs vs = do
@@ -68,7 +68,7 @@ hasTranslation known scanner = hasLength matchingThresholdPairs
 -- Given a set of "true" beacon locations and a rotated scanner,
 -- translate the scanner readings so they overlap the known beacons
 -- Joins the two sets together to get a new view "true" view
-getAligned :: KnownBeacons -> Scanner -> Maybe Beacons
+getAligned :: KnownBeacons -> Scanner -> Maybe (Beacons, Vector Int)
 getAligned known scanner = listToMaybe $ do
    let xs = beacons known
    let ys = beacons scanner
@@ -80,14 +80,15 @@ getAligned known scanner = listToMaybe $ do
    -- Equivalent to guard (length (intersect xs ys') >= matchingThreshold)
    -- Do it this way since we have to compute the union anyway
    guard (length u + matchingThreshold <= length xs + length ys')
-   return u
+   return (u,t)
 
 -- Aligns and adds scanner readings to a set of "true" beacon locations
 align :: KnownBeacons -> Scanner -> Maybe KnownBeacons
-align known scanner = fmap makeKnownBeacons $ listToMaybe $ catMaybes $ do
+align known scanner = listToMaybe $ do
    rotScan <- getRotations scanner
    guard $ hasTranslation known rotScan
-   return $ getAligned known rotScan
+   (u,t) <- maybeToList (getAligned known rotScan)
+   return $ KnownBeacons u (diffs u) (t : translations known)
 
 triangulate :: [Scanner] -> KnownBeacons
 triangulate (s:ss) = aux (makeKnownBeacons $ beacons s) ss where
@@ -99,6 +100,14 @@ triangulate (s:ss) = aux (makeKnownBeacons $ beacons s) ss where
 
 part1 :: [Scanner] -> Int
 part1 = length . beacons . triangulate
+
+--------------------------------------------------------------------------------
+
+manhattan :: Vector Int -> Int
+manhattan (Vec x y z) = abs x + abs y + abs z
+
+part2 :: [Scanner] -> Int
+part2 = maximum . map manhattan . diffs . translations . triangulate
 
 --------------------------------------------------------------------------------
 

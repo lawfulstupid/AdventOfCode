@@ -18,6 +18,10 @@ instance Show a => Show (Vector a) where
 instance Num a => Num (Vector a) where
    Vec x1 y1 z1 + Vec x2 y2 z2 = Vec (x1+x2) (y1+y2) (z1+z2)
    negate (Vec x y z) = Vec (-x) (-y) (-z)
+   Vec a1 a2 a3 * Vec b1 b2 b3 = Vec (a2*b3-a3*b2) (a3*b1-a1*b3) (a1*b2-a2*b1)
+   fromInteger = undefined
+   abs = undefined
+   signum = undefined
 
 --------------------------------------------------------------------------------
 
@@ -28,8 +32,8 @@ type Turns = Int
 
 --------------------------------------------------------------------------------
 
-apply :: Num a => Matrix a -> Vector a -> Vector a
-apply m (Vec x y z) = let
+applyTransform :: Num a => Matrix a -> Vector a -> Vector a
+applyTransform m (Vec x y z) = let
    [[a,b,c],[d,e,f],[g,h,i]] = unpack m
    in Vec (a*x+b*y+c*z) (d*x+e*y+f*z) (g*x+h*y+i*z)
 
