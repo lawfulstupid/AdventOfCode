@@ -49,6 +49,11 @@ part1 input = count (==Light) $ concat $ unpack $ grid $ image $ step $ step inp
 
 --------------------------------------------------------------------------------
 
+part2 :: Input -> Int
+part2 input = count (==Light) $ concat $ unpack $ grid $ image $ (iterate step input !! 50)
+
+--------------------------------------------------------------------------------
+
 readPixel :: Char -> Pixel
 readPixel '.' = Dark
 readPixel '#' = Light
