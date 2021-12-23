@@ -6,7 +6,7 @@ data Player = Player
    , score :: Int
    } deriving (Show, Eq)
 
-data Die = Die
+data DeterministicDie = DeterministicDie
    { nextRoll :: Int
    , maxRoll :: Int
    , totalRolls :: Int
@@ -15,16 +15,15 @@ data Die = Die
 data Game = Game
    { player1 :: Player
    , player2 :: Player
-   , die :: Die
+   , die :: DeterministicDie
    } deriving (Show, Eq)
 
 --------------------------------------------------------------------------------
 
-roll :: Die -> (Int, Die)
+roll :: DeterministicDie -> (Int, DeterministicDie)
 roll d = (nextRoll d, d
    { nextRoll = if nextRoll d == maxRoll d then 1 else nextRoll d + 1
-   , totalRolls = totalRolls d + 1
-   })
+   , totalRolls = totalRolls d + 1 })
 
 mod10 :: Int -> Int
 mod10 n = ((n-1) `mod` 10) + 1
@@ -64,7 +63,7 @@ part1 game = let
 --------------------------------------------------------------------------------
 
 sampleInput :: Game
-sampleInput = Game (Player 1 4 0) (Player 2 8 0) (Die 1 100 0)
+sampleInput = Game (Player 1 4 0) (Player 2 8 0) (DeterministicDie 1 100 0)
 
 myInput :: Game
-myInput = Game (Player 1 5 0) (Player 2 8 0) (Die 1 100 0)
+myInput = Game (Player 1 5 0) (Player 2 8 0) (DeterministicDie 1 100 0)
