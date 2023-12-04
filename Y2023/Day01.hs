@@ -1,5 +1,7 @@
 module AdventOfCode.Y2023.Day01 where
 
+import YAMP.Module
+import Data.List
 import Data.Char
 
 type Input = [String]
@@ -9,8 +11,45 @@ part1 input = sum $ map getNum input
 
 getNum :: String -> Int
 getNum str = let
-   nums = filter isNumber str
-   in read [head nums, last nums]
+   nums = map digitToInt $ filter isDigit str
+   in concress nums
+
+concress :: [Int] -> Int
+concress xs = let
+   str = foldMap show xs
+   in read [head str, last str]
+
+part2 :: Input -> Int
+part2 input = sum $ map (concress . fullParseUsing numExtractor) input
+
+numExtractor :: Parser [] Char [Int]
+numExtractor = do
+   let f = jointNumParser |> numParser |> (nextToken >> f)
+   list <- greedy (many f)
+   greedy (many nextToken)
+   pure list
+
+jointNumParser :: Parser [] Char Int
+jointNumParser = (match "oneight" >> pure 18)
+   <|> (match "twone" >> pure 21)
+   <|> (match "threeight" >> pure 38)
+   <|> (match "fiveight" >> pure 58)
+   <|> (match "sevenine" >> pure 79)
+   <|> (match "eightwo" >> pure 82)
+   <|> (match "eighthree" >> pure 83)
+   <|> (match "nineight" >> pure 98)
+
+numParser :: Parser [] Char Int
+numParser = (digitToInt <$> digit)
+   <|> (match "one" >> pure 1)
+   <|> (match "two" >> pure 2)
+   <|> (match "three" >> pure 3)
+   <|> (match "four" >> pure 4)
+   <|> (match "five" >> pure 5)
+   <|> (match "six" >> pure 6)
+   <|> (match "seven" >> pure 7)
+   <|> (match "eight" >> pure 8)
+   <|> (match "nine" >> pure 9)
 
 sampleInput :: Input
 sampleInput = 
@@ -18,6 +57,16 @@ sampleInput =
    , "pqr3stu8vwx"
    , "a1b2c3d4e5f"
    , "treb7uchet" ]
+
+sampleInput2 :: Input
+sampleInput2 =
+   [ "two1nine"
+   , "eightwothree"
+   , "abcone2threexyz"
+   , "xtwone3four"
+   , "4nineeightseven2"
+   , "zoneight234"
+   , "7pqrstsixteen" ]
 
 input :: Input
 input = 
