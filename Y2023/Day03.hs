@@ -5,10 +5,12 @@ import Data.Char
 import Data.List
 import Data.Tuple
 import Data.Foldable
+import Data.Maybe
 
 type Input = Grid Cell
 data Cell = Num Int | Sym Char | Empty
-data NumRef = NumRef Coords Int
+   deriving (Eq)
+data NumRef = NumRef { pos :: Coords, len :: Int }
    deriving (Show, Eq)
 
 isNum :: Cell -> Bool
@@ -56,9 +58,30 @@ getValue g = read . getValueStr
 rightStep :: NumRef -> NumRef
 rightStep (NumRef (x,y) n) = NumRef (x+1,y) (n-1)
 
-part2 :: Input -> Integer
-part2 = undefined
-
+part2 :: Input -> Int
+part2 grid = sum $ catMaybes $ map getGearRatio $ findAll (Sym '*' ==) grid
+   where
+   nums = getNumberPositions grid
+   
+   getNum :: Coords -> Int
+   getNum p = getValue grid $ head $ filter ((p ==) . pos) nums
+   
+   getGearRatio :: Coords -> Maybe Int
+   getGearRatio (x,y) = computeGearRatio
+      $ nub $ sort
+      $ map findNumStart
+      $ filter (isNum . (grid #!))
+      $ [(x+dx,y+dy) | dx <- [-1..1], dy <- [-1..1]]
+   
+   findNumStart :: Coords -> Coords
+   findNumStart (x,y) = case grid # (x-1, y) of
+      Just (Num _) -> findNumStart (x-1, y)
+      _ -> (x,y)
+   
+   computeGearRatio :: [Coords] -> Maybe Int
+   computeGearRatio ps = case ps of
+      [p1,p2] -> Just (getNum p1 * getNum p2)
+      _ -> Nothing
 
 instance Show Cell where
    show (Num n) = show n
