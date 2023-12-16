@@ -27,7 +27,21 @@ points c = case wins c of
    n -> 2^(n-1)
 
 part2 :: Input -> Int
-part2 = undefined
+part2 cards = sum instances
+   where
+   instances :: [Int]
+   instances = flip map cards $ \baseCard -> let
+      n = cardId baseCard
+      higherCards = take (n-1) cards
+      relevantCards = filter (\card -> reach card >= n) higherCards
+      copies = sum $ map getInstances relevantCards
+      in copies + 1
+   
+   getInstances :: Card -> Int
+   getInstances card = instances !! (cardId card - 1)
+   
+   reach :: Card -> Int
+   reach card = cardId card + wins card
 
 instance Parse [] Char Card where
    parser = do
