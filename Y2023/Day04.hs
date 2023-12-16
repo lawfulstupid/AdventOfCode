@@ -9,17 +9,13 @@ import qualified Data.Set as Set
 
 data Card = Card
    { cardId :: Int
-   , winningNums :: Set Int
-   , revealedNums :: Set Int
+   , wins :: Int
    } deriving (Show)
 
 type Input = [Card]
 
 part1 :: Input -> Int
 part1 = sum . map points
-
-wins :: Card -> Int
-wins (Card _ ws rs) = Set.size $ Set.intersection ws rs
 
 points :: Card -> Int
 points c = case wins c of
@@ -51,8 +47,9 @@ instance Parse [] Char Card where
       wins <- some (greedy hspace >> readParser)
       match " |"
       yours <- some (greedy hspace >> readParser)
-      let toSet = Set.fromDistinctAscList . sort
-      pure $ Card n (toSet wins) (toSet yours)
+      let toSet = (Set.fromDistinctAscList . sort) :: [Int] -> Set Int
+      let w = Set.size $ Set.intersection (toSet wins) (toSet yours)
+      pure $ Card n w
 
 sampleInput :: Input
 sampleInput = map fullParse
