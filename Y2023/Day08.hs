@@ -1,7 +1,9 @@
 module AdventOfCode.Y2023.Day08 where
 
-data Input = Input
-   { seq :: [Direction]
+type Input = [State]
+
+data State = State
+   { dirs :: [Direction]
    , tree :: Tree
    }
 
@@ -17,22 +19,49 @@ data Tree = Tree
 --------------------------------------------------------------------------------
 
 part1 :: Input -> Int
-part1 (Input ds tree) = countStepsToZZZ ds tree
+part1 states = snd
+   $ countStepsToZZZ
+   $ head
+   $ filter (\state -> label (tree state) == "aaa") states
 
-countStepsToZZZ :: [Direction] -> Tree -> Int
-countStepsToZZZ _ (Tree _ "zzz" _) = 0
-countStepsToZZZ (L:ds) (Tree tree _ _) = 1 + countStepsToZZZ ds tree
-countStepsToZZZ (R:ds) (Tree _ _ tree) = 1 + countStepsToZZZ ds tree
+countStepsToZZZ :: State -> (State, Int)
+countStepsToZZZ = countStepsTo (== "zzz")
+
+countStepsTo :: (String -> Bool) -> State -> (State, Int)
+countStepsTo pred state
+   | pred $ label $ tree state = (state, 0)
+   | otherwise = fmap (+1) $ countStepsTo pred $ step state
+
+step :: State -> State
+step (State (L:ds) (Tree tree _ _)) = State ds tree
+step (State (R:ds) (Tree _ _ tree)) = State ds tree
 
 --------------------------------------------------------------------------------
 
 part2 :: Input -> Int
-part2 = undefined
+part2 states = let
+   ops = map getOffsetAndPeriod states
+   in if all (==0) $ map fst ops
+      then foldr1 lcm $ map snd ops
+      else error "Idk how to solve this"
+
+getOffsetAndPeriod :: State -> (Int, Int)
+getOffsetAndPeriod state = let
+   (state', initOffset) = countStepsTo isZNode state
+   (_, period) = countStepsTo isZNode state
+   in (initOffset - period, period)
+
+isZNode :: String -> Bool
+isZNode [_,_,'z'] = True
+isZNode _ = False
 
 --------------------------------------------------------------------------------
 
-sampleInput1 :: Input
-sampleInput1 = Input (concat $ repeat [R,L]) aaa
+states :: [Direction] -> [Tree] -> [State]
+states ds trees = map (State $ concat $ repeat ds) trees
+
+sampleInput1 :: [State]
+sampleInput1 = states [R,L] [aaa]
    where
    aaa = Tree bbb "aaa" ccc
    bbb = Tree ddd "bbb" eee
@@ -43,14 +72,28 @@ sampleInput1 = Input (concat $ repeat [R,L]) aaa
    zzz = Tree zzz "zzz" zzz
 
 sampleInput2 :: Input
-sampleInput2 = Input (concat $ repeat [L,L,R]) aaa
+sampleInput2 = states [L,L,R] [aaa]
    where
    aaa = Tree bbb "aaa" bbb
    bbb = Tree aaa "bbb" zzz
    zzz = Tree zzz "zzz" zzz
 
+sampleInput3 :: Input
+sampleInput3 = states [L,R] [aaa,bba]
+   where
+   aaa = Tree aab "aaa" xxx
+   aab = Tree xxx "aab" aaz
+   aaz = Tree aab "aaz" xxx
+   bba = Tree bbb "bba" xxx
+   bbb = Tree bbc "bbb" bbc
+   bbc = Tree bbz "bbc" bbz
+   bbz = Tree bbb "bbz" bbb
+   xxx = Tree xxx "xxx" xxx
+
 myInput :: Input
-myInput = Input (concat $ repeat [L,L,L,L,R,L,R,L,R,R,L,R,R,R,L,R,R,L,R,L,R,R,L,R,L,L,R,R,R,L,R,R,L,R,R,R,L,R,L,L,L,R,L,R,R,L,R,L,L,R,R,R,L,R,R,L,R,L,R,R,L,L,R,R,R,L,R,R,R,L,R,L,R,R,L,R,R,R,L,R,R,L,R,R,L,L,R,R,R,L,L,L,L,R,R,L,R,R,L,R,R,L,R,R,R,L,L,L,R,L,R,L,R,L,R,R,L,R,R,R,L,R,L,R,R,R,L,R,L,R,R,R,L,R,R,L,R,R,L,L,R,R,L,L,R,L,R,R,R,L,R,L,R,R,R,L,L,L,R,L,R,R,R,L,R,L,R,R,R,L,R,R,L,R,L,R,R,L,R,R,R,L,R,R,R,L,R,R,L,L,L,R,R,R,L,R,R,L,R,R,L,R,R,L,R,R,R,L,L,L,R,R,L,R,L,R,R,R,L,L,L,L,R,R,R,L,R,R,L,R,R,R,L,L,R,L,R,L,R,R,L,L,R,R,R,L,L,R,L,R,L,R,L,R,R,L,R,R,L,R,R,R,L,R,R,L,L,R,L,R,R,L,R,R,L,L,L,L,R,R,L,R,L,R,R,L,L,R,R,L,L,R,R,L,R,R,L,R,R,R,L,L,L,R,R,R,R]) aaa
+myInput = states
+   [L,L,L,L,R,L,R,L,R,R,L,R,R,R,L,R,R,L,R,L,R,R,L,R,L,L,R,R,R,L,R,R,L,R,R,R,L,R,L,L,L,R,L,R,R,L,R,L,L,R,R,R,L,R,R,L,R,L,R,R,L,L,R,R,R,L,R,R,R,L,R,L,R,R,L,R,R,R,L,R,R,L,R,R,L,L,R,R,R,L,L,L,L,R,R,L,R,R,L,R,R,L,R,R,R,L,L,L,R,L,R,L,R,L,R,R,L,R,R,R,L,R,L,R,R,R,L,R,L,R,R,R,L,R,R,L,R,R,L,L,R,R,L,L,R,L,R,R,R,L,R,L,R,R,R,L,L,L,R,L,R,R,R,L,R,L,R,R,R,L,R,R,L,R,L,R,R,L,R,R,R,L,R,R,R,L,R,R,L,L,L,R,R,R,L,R,R,L,R,R,L,R,R,L,R,R,R,L,L,L,R,R,L,R,L,R,R,R,L,L,L,L,R,R,R,L,R,R,L,R,R,R,L,L,R,L,R,L,R,R,L,L,R,R,R,L,L,R,L,R,L,R,L,R,R,L,R,R,L,R,R,R,L,R,R,L,L,R,L,R,R,L,R,R,L,L,L,L,R,R,L,R,L,R,R,L,L,R,R,L,L,R,R,L,R,R,L,R,R,R,L,L,L,R,R,R,R]
+   [aaa,dna,hna,lma,vga,lla]
    where
    brr = Tree lvc "brr" fsj
    bhx = Tree gmg "bhx" qtn
