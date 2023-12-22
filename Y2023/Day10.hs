@@ -67,26 +67,38 @@ getAnimalPipe grid = let
    in getCellFromDirections dirs
 
 loopLength :: Grid Cell -> Int
-loopLength grid = traverse (head $ directions animalPipe) animalPos
+loopLength = length . getLoop
+
+getLoop :: Grid Cell -> [Coords]
+getLoop grid = traverse (head $ directions animalPipe) animalPos
    where
    animalPipe = getAnimalPipe grid
    animalPos = getPos Animal grid
    
-   traverse :: Direction -> Coords -> Int
+   traverse :: Direction -> Coords -> [Coords]
    traverse dir pos = let
       cell = grid #! pos
       nextPos = step dir pos
       nextCell = grid #! nextPos
       dontGo = opposite dir
       nextDir = head $ filter (/= dontGo) $ directions nextCell
-      in if nextCell == Animal
-         then 1
-         else 1 + traverse nextDir nextPos
+      in pos : if nextCell == Animal
+         then []
+         else traverse nextDir nextPos
 
 --------------------------------------------------------------------------------
 
 part2 :: Input -> Int
-part2 = undefined
+part2 = getEnclosedArea
+
+getEnclosedArea :: Grid Cell -> Int
+getEnclosedArea grid = polygonArea - (length loop `div` 2) + 1 -- Pick's Theorem
+   where
+   loop = getLoop grid
+   polygonArea = (`div` 2) $ abs $ shoelace loop
+   -- Shoelace Formula
+   shoelace [(xn,yn)] = let (x1,y1) = head loop in (xn*y1-yn*x1)
+   shoelace ((x1,y1):(x2,y2):ps) = (x1*y2-y1*x2) + shoelace ((x2,y2):ps)
 
 --------------------------------------------------------------------------------
 
@@ -136,6 +148,18 @@ sampleInput4 = parseInput
    , ".|..|.|..|."
    , ".L--J.L--J."
    , "..........." ]
+
+sampleInput5 :: Input
+sampleInput5 = parseInput
+   [ ".........."
+   , ".S------7."
+   , ".|F----7|."
+   , ".||....||."
+   , ".||....||."
+   , ".|L-7F-J|."
+   , ".|..||..|."
+   , ".L--JL--J."
+   , ".........." ]
 
 myInput :: Input
 myInput = parseInput
